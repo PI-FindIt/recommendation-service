@@ -1,0 +1,45 @@
+services:
+  recommendation-service_postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - recommendation-service
+
+  recommendation-service:
+    build:
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - POSTGRES_URL=recommendation-service_postgres
+      - MONGO_URL=recommendation-service_mongo
+    depends_on:
+      recommendation-service_postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    tty: true
+    networks:
+      - recommendation-service
+      - backend
+      - analytics
+    labels:
+      - "traefik.http.routers.recommendation-service.rule=HostRegexp(`api\\..+`) && PathPrefix(`/user`)"
+
+
+networks:
+  recommendation-service:
+
+volumes:
+  postgres-data:

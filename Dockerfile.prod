@@ -1,0 +1,14 @@
+FROM python:3.12
+ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV ENV production
+
+WORKDIR /recommendation-service
+
+RUN pip install --no-cache poetry
+
+COPY . .
+RUN poetry install --no-dev
+
+EXPOSE 8000
+CMD [ "poetry", "run", "gunicorn", "src.main:app", "--bind", "0.0.0.0:8000", "-k", "uvicorn.workers.UvicornWorker" ]
