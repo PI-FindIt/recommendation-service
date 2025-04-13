@@ -10,7 +10,7 @@ ENV PATH="$PATH:/root/.local/bin"
 
 WORKDIR /recommendation-service
 
-RUN pip install --no-cache uv
+RUN pip install --no-cache uv uvicorn
 
 COPY uv.lock pyproject.toml ./
 RUN uv sync --group dev
