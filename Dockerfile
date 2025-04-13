@@ -11,7 +11,7 @@ WORKDIR /recommendation-service
 RUN pip install --no-cache uv
 
 COPY uv.lock pyproject.toml ./
-RUN uv sync --with dev
+RUN uv sync --group dev
 
 EXPOSE 8000
 CMD [ "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
