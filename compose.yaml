@@ -48,7 +48,10 @@ services:
       - ./config/airflow.cfg:/opt/airflow/airflow.cfg
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+asyncpg://airflow:airflow@postgres/airflow
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_SIZE: 5
+      AIRFLOW__DATABASE__SQL_ALCHEMY_MAX_OVERFLOW: 10
+      AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_PRE_PING: "True"
       depends_on: postgres
     networks:
       - recommendation-service
