@@ -8,10 +8,10 @@ ENV TORCH_CUDA_VERSION="cpu"
 
 WORKDIR /recommendation-service
 
-RUN pip install --no-cache poetry
+RUN pip install --no-cache uv
 
-COPY poetry.lock pyproject.toml ./
-RUN poetry install --with dev
+COPY uv.lock pyproject.toml ./
+RUN uv sync --with dev
 
 EXPOSE 8000
 CMD [ "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]

@@ -6,10 +6,10 @@ ENV TORCH_CUDA_VERSION="cpu"
 
 WORKDIR /recommendation-service
 
-RUN pip install --no-cache poetry
+RUN pip install --no-cache uv
 
 COPY . .
-RUN poetry install --no-dev
+RUN uv sync
 
 EXPOSE 8000
-CMD [ "poetry", "run", "gunicorn", "src.main:app", "--bind", "0.0.0.0:8000", "-k", "uvicorn.workers.UvicornWorker" ]
+CMD [ "uv", "run", "gunicorn", "src.main:app", "--bind", "0.0.0.0:8000", "-k", "uvicorn.workers.UvicornWorker" ]
