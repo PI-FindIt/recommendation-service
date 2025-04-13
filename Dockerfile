@@ -5,6 +5,8 @@ ENV UV_VIRTUALENVS_CREATE false
 ENV UV_VIRTUALENVS_IN_PROJECT false
 ENV ENV development
 ENV TORCH_CUDA_VERSION="cpu"
+ENV PATH="$PATH:/root/.local/bin"
+
 
 WORKDIR /recommendation-service
 
