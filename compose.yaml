@@ -26,6 +26,12 @@
         POSTGRES_USER: airflow
         POSTGRES_PASSWORD: airflow
         POSTGRES_DB: airflow
+      healthcheck:
+        test: [ "CMD", "pg_isready", "-U", "postgres" ]
+        interval: 2s
+        timeout: 5s
+        retries: 5
+
 
       networks:
         - recommendation-service
@@ -52,7 +58,9 @@
         AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_SIZE: 5
         AIRFLOW__DATABASE__SQL_ALCHEMY_MAX_OVERFLOW: 10
         AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_PRE_PING: "True"
-        depends_on: recommendation-service_postgres
+      depends_on:
+        recommendation-service_postgres:
+            condition: service_healthy
       networks:
         - recommendation-service
 
