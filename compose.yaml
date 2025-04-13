@@ -48,7 +48,7 @@ services:
       - ./config/airflow.cfg:/opt/airflow/airflow.cfg
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycogreen://airflow:airflow@postgres/airflow
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+asyncpg://airflow:airflow@postgres/airflow
       depends_on: postgres
     networks:
       - recommendation-service
