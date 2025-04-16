@@ -15,8 +15,9 @@ from datetime import datetime
 import json
 from pathlib import Path
 from redis import Redis
-from redisvl.index import VectorIndex
-from redisvl.query import VectorQuery
+from redis.commands.search.field import VectorField, TextField
+from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from redis.commands.search.query import Query
 
 console = Console()
 
@@ -78,7 +79,7 @@ class ProductSimilarityEngine:
             
         # Configurar Redis (opcional, será inicializado apenas se necessário)
         self.redis_client = None
-        self.vector_index = None
+        self.redis_index_name = "product_idx"
         
     def _generate_field_embeddings(self, product: Dict[str, Any]) -> Dict[str, np.ndarray]:
         """
@@ -269,18 +270,36 @@ class ProductSimilarityEngine:
         """
         try:
             self.redis_client = Redis.from_url(redis_url)
-            self.vector_index = VectorIndex(
-                name="product_embeddings",
-                dim=384,  # dimensão do modelo all-MiniLM-L6-v2
-                redis_client=self.redis_client,
-                index_type="FLAT",  # L2 distance
-                prefix="prod:"
+            
+            # Definir schema do índice
+            schema = (
+                TextField("$.ean", as_name="ean"),
+                TextField("$.name", as_name="name"),
+                TextField("$.category", as_name="category"),
+                TextField("$.brand", as_name="brand"),
+                VectorField("$.embedding", 
+                           "FLAT", {
+                               "TYPE": "FLOAT32",
+                               "DIM": 384,  # dimensão do modelo all-MiniLM-L6-v2
+                               "DISTANCE_METRIC": "L2"
+                           }, as_name="embedding")
             )
+            
+            try:
+                # Tentar criar o índice
+                self.redis_client.ft(self.redis_index_name).create_index(
+                    fields=schema,
+                    definition=IndexDefinition(prefix=["prod:"], index_type=IndexType.JSON)
+                )
+            except Exception as e:
+                # Índice pode já existir, isso é ok
+                console.print(f"[yellow]Nota: {str(e)}[/yellow]")
+                
             console.print("[green]✓ Conexão com Redis estabelecida com sucesso![/green]")
+            
         except Exception as e:
             console.print(f"[red]Erro ao conectar com Redis: {e}[/red]")
             self.redis_client = None
-            self.vector_index = None
 
     def save_embeddings(self, save_format: str = "all"):
         """
@@ -336,27 +355,28 @@ class ProductSimilarityEngine:
             if not self.redis_client:
                 self._initialize_redis()
                 
-            if self.vector_index:
+            if self.redis_client:
                 # Salvar embeddings no Redis
+                pipe = self.redis_client.pipeline()
+                
                 for idx, (product_id, product) in enumerate(self.product_mapping.items()):
-                    vector = embeddings[idx].astype('float32')
+                    vector = embeddings[idx].astype('float32').tolist()
                     
-                    # Criar documento com metadata
-                    metadata = {
+                    # Criar documento com metadata e embedding
+                    data = {
                         'ean': product['ean'],
                         'name': product['name'],
                         'category': product.get('categoryName', ''),
                         'brand': product.get('brandName', ''),
-                        'timestamp': timestamp
+                        'timestamp': timestamp,
+                        'embedding': vector
                     }
                     
-                    # Adicionar ao índice
-                    self.vector_index.load(
-                        keys=[f"prod:{product['ean']}"],
-                        vectors=[vector],
-                        metadatas=[metadata]
-                    )
+                    # Adicionar ao Redis
+                    pipe.json().set(f"prod:{product['ean']}", '$', data)
                 
+                # Executar todas as operações
+                pipe.execute()
                 console.print("[green]✓ Embeddings salvos no Redis[/green]")
 
     def load_embeddings(self, timestamp: str = None, load_format: str = 'numpy'):
@@ -417,7 +437,7 @@ class ProductSimilarityEngine:
             if not self.redis_client:
                 self._initialize_redis()
                 
-            if self.vector_index:
+            if self.redis_client:
                 console.print("[green]✓ Conectado ao índice Redis[/green]")
                 # Não precisamos carregar nada explicitamente do Redis
                 # Os vetores já estão disponíveis para consulta
@@ -436,23 +456,40 @@ class ProductSimilarityEngine:
         """
         Encontra produtos similares usando Redis Vector Search
         """
-        if not self.vector_index:
+        if not self.redis_client:
             raise ValueError("Redis não está configurado!")
             
-        query = VectorQuery(
-            vector=self.model.encode(self.product_mapping[product_ean]['name']),
-            k=k + 1  # +1 porque o próprio produto será retornado
+        # Obter o embedding do produto de consulta
+        product = self.product_mapping[product_ean]
+        query_embedding = self.model.encode(product['name']).astype('float32').tolist()
+        
+        # Construir a query
+        query = (
+            Query(f'*=>[KNN {k + 1} @embedding $vec AS score]')
+            .dialect(2)
+            .paging(0, k + 1)
+            .return_fields('ean', 'name', 'category', 'brand', 'score')
+            .sort_by('score')
         )
         
-        results = self.vector_index.query(query)
+        # Executar a busca
+        results = self.redis_client.ft(self.redis_index_name).search(
+            query,
+            {'vec': query_embedding}
+        )
         
-        # Filtrar o próprio produto e formatar resultados
+        # Formatar resultados
         similar_products = []
-        for result in results:
-            if result.key != f"prod:{product_ean}":
+        for doc in results.docs:
+            if doc.ean != product_ean:  # Não incluir o próprio produto
                 similar_products.append({
-                    "product": result.metadata,
-                    "similarity_score": float(result.score)
+                    "product": {
+                        "ean": doc.ean,
+                        "name": doc.name,
+                        "category": doc.category,
+                        "brand": doc.brand
+                    },
+                    "similarity_score": 1 / (1 + float(doc.score))  # Converter distância em similaridade
                 })
                 
         return similar_products[:k]
