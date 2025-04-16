@@ -278,7 +278,7 @@ class ProductSimilarityEngine:
         
         return results
 
-    def _initialize_redis(self, redis_url: str = "redis://  :6379"):
+    def _initialize_redis(self, redis_url: str = "redis://localhost:6379"):
         """
         Inicializa a conexão com Redis e cria o índice de vetores
         """
@@ -315,7 +315,7 @@ class ProductSimilarityEngine:
             console.print(f"[red]Erro ao conectar com Redis: {e}[/red]")
             self.redis_client = None
 
-    def     save_embeddings(self, save_format: str = "all"):
+    def save_embeddings(self, save_format: str = "all"):
         """
         Salva os embeddings e metadados em diferentes formatos.
         
@@ -406,10 +406,10 @@ class ProductSimilarityEngine:
                             'timestamp': timestamp,
                             'embedding': vector
                         }
-                        
+
                         # Adicionar ao Redis
                         pipe.json().set(f"prod:{product['ean']}", '$', data)
-                        console.print(f"[green  ]Produto {product['ean']} salvo no Redis[/green]")
+                        console.print(f"[green]Produto {product['ean']} salvo no Redis[/green]")
                     
                     # Executar todas as operações
                     pipe.execute()
@@ -563,7 +563,7 @@ def fetch_products(limit: int = 14000) -> List[Dict[str, Any]]:
     
     try:
         response = requests.post(
-            "http://localhost",
+            "http://100.109.29.71",
             json={"query": query, "variables": variables}
         )
         

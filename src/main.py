@@ -90,7 +90,7 @@ def main():
     try:
         # Inicializar o engine
         show_loading_animation("Inicializando o motor de recomendações")
-        engine = RecommendationEngine(load_from='numpy')  # ou 'faiss' ou 'redis'
+        engine = RecommendationEngine(load_from='faiss')  # ou 'faiss' ou 'redis'
         console.print("[green]✓ Sistema inicializado com sucesso![/green]")
         
         while True:
