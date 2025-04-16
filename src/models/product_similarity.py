@@ -181,11 +181,21 @@ class ProductSimilarityEngine:
                     # Combinar embeddings
                     combined = self._combine_embeddings(field_embeddings)
                     
+                    # Verificar se o embedding é válido
+                    if np.isnan(combined).any():
+                        raise ValueError("Embedding contém valores NaN")
+                    if np.isinf(combined).any():
+                        raise ValueError("Embedding contém valores infinitos")
+                    
                     # Adicionar ao array de embeddings
                     all_embeddings.append(combined)
                     
                     # Mapear produto
                     self.product_mapping[i] = product
+                    
+                    # Debug: mostrar progresso a cada 100 produtos
+                    if i % 100 == 0:
+                        console.print(f"[blue]Processados {i} produtos[/blue]")
                     
                 except Exception as e:
                     console.print(f"[yellow]Aviso: Erro ao processar produto {i}: {str(e)}[/yellow]")
@@ -196,6 +206,8 @@ class ProductSimilarityEngine:
             
             # Converter para array numpy
             embeddings_array = np.array(all_embeddings).astype('float32')
+            
+            console.print(f"[blue]Shape do array de embeddings: {embeddings_array.shape}[/blue]")
             
             # Criar e popular índice FAISS
             dimension = embeddings_array.shape[1]
@@ -321,12 +333,22 @@ class ProductSimilarityEngine:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             console.print(f"\n[bold cyan]Salvando embeddings (formato: {save_format})...[/bold cyan]")
 
-            # Verificar se podemos extrair os embeddings
+            # Extrair embeddings do índice FAISS
             try:
-                embeddings = faiss.vector_to_array(self.index.get_xb())
+                # Obter o número total de vetores e dimensão
+                num_vectors = self.index.ntotal
+                dimension = self.index.d
+                
+                # Criar um array para armazenar os vetores
+                embeddings = np.empty((num_vectors, dimension), dtype=np.float32)
+                
+                # Reconstruir os vetores do índice
+                for i in range(num_vectors):
+                    embeddings[i] = faiss.vector_to_array(self.index.reconstruct(i))
+                    
                 if embeddings.size == 0:
                     raise ValueError("Nenhum embedding encontrado no índice FAISS!")
-                embeddings = embeddings.reshape(-1, self.index.d)
+                    
             except Exception as e:
                 raise ValueError(f"Erro ao extrair embeddings do índice FAISS: {str(e)}")
 
@@ -345,7 +367,7 @@ class ProductSimilarityEngine:
                 metadata = {
                     'timestamp': timestamp,
                     'model_name': 'all-MiniLM-L6-v2',
-                    'embedding_dim': self.index.d,
+                    'embedding_dim': dimension,
                     'num_products': len(self.product_mapping),
                     'field_weights': self.field_weights
                 }
@@ -373,7 +395,7 @@ class ProductSimilarityEngine:
                     pipe = self.redis_client.pipeline()
                     
                     for idx, (product_id, product) in enumerate(self.product_mapping.items()):
-                        vector = embeddings[idx].astype('float32').tolist()
+                        vector = embeddings[idx].tolist()
                         
                         # Criar documento com metadata e embedding
                         data = {
