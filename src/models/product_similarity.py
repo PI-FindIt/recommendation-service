@@ -9,6 +9,14 @@ from rich.progress import track
 from rich.table import Table
 import time
 import torch
+import os
+import pickle
+from datetime import datetime
+import json
+from pathlib import Path
+from redis import Redis
+from redisvl.index import VectorIndex
+from redisvl.query import VectorQuery
 
 console = Console()
 
@@ -57,6 +65,20 @@ class ProductSimilarityEngine:
         
         self.product_mapping: Dict[int, Dict] = {}
         self.index = None
+        
+        # Configurar diretórios para armazenamento
+        self.storage_dir = Path("storage")
+        self.embeddings_dir = self.storage_dir / "embeddings"
+        self.index_dir = self.storage_dir / "index"
+        self.metadata_dir = self.storage_dir / "metadata"
+        
+        # Criar diretórios se não existirem
+        for directory in [self.storage_dir, self.embeddings_dir, self.index_dir, self.metadata_dir]:
+            directory.mkdir(parents=True, exist_ok=True)
+            
+        # Configurar Redis (opcional, será inicializado apenas se necessário)
+        self.redis_client = None
+        self.vector_index = None
         
     def _generate_field_embeddings(self, product: Dict[str, Any]) -> Dict[str, np.ndarray]:
         """
@@ -241,6 +263,200 @@ class ProductSimilarityEngine:
         
         return results
 
+    def _initialize_redis(self, redis_url: str = "redis://localhost:6379"):
+        """
+        Inicializa a conexão com Redis e cria o índice de vetores
+        """
+        try:
+            self.redis_client = Redis.from_url(redis_url)
+            self.vector_index = VectorIndex(
+                name="product_embeddings",
+                dim=384,  # dimensão do modelo all-MiniLM-L6-v2
+                redis_client=self.redis_client,
+                index_type="FLAT",  # L2 distance
+                prefix="prod:"
+            )
+            console.print("[green]✓ Conexão com Redis estabelecida com sucesso![/green]")
+        except Exception as e:
+            console.print(f"[red]Erro ao conectar com Redis: {e}[/red]")
+            self.redis_client = None
+            self.vector_index = None
+
+    def save_embeddings(self, save_format: str = "all"):
+        """
+        Salva os embeddings e metadados em diferentes formatos.
+        
+        Args:
+            save_format: Formato de salvamento ('numpy', 'faiss', 'redis', 'all')
+        """
+        if not self.index or not self.product_mapping:
+            raise ValueError("Nenhum embedding para salvar! Execute build_index primeiro.")
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        console.print(f"\n[bold cyan]Salvando embeddings (formato: {save_format})...[/bold cyan]")
+
+        # Extrair embeddings do índice FAISS
+        embeddings = faiss.vector_to_array(self.index.get_xb()).reshape(-1, self.index.d)
+
+        if save_format in ['numpy', 'all']:
+            # Salvar embeddings em formato numpy
+            np.save(
+                self.embeddings_dir / f"embeddings_{timestamp}.npy",
+                embeddings
+            )
+            
+            # Salvar mapeamento produto-índice
+            with open(self.metadata_dir / f"product_mapping_{timestamp}.pkl", 'wb') as f:
+                pickle.dump(self.product_mapping, f)
+                
+            # Salvar configurações e metadados
+            metadata = {
+                'timestamp': timestamp,
+                'model_name': 'all-MiniLM-L6-v2',
+                'embedding_dim': self.index.d,
+                'num_products': len(self.product_mapping),
+                'field_weights': self.field_weights
+            }
+            
+            with open(self.metadata_dir / f"metadata_{timestamp}.json", 'w') as f:
+                json.dump(metadata, f, indent=2)
+                
+            console.print("[green]✓ Embeddings salvos em formato numpy[/green]")
+
+        if save_format in ['faiss', 'all']:
+            # Salvar índice FAISS
+            faiss.write_index(
+                self.index,
+                str(self.index_dir / f"faiss_index_{timestamp}.idx")
+            )
+            console.print("[green]✓ Índice FAISS salvo[/green]")
+
+        if save_format in ['redis', 'all']:
+            # Inicializar Redis se necessário
+            if not self.redis_client:
+                self._initialize_redis()
+                
+            if self.vector_index:
+                # Salvar embeddings no Redis
+                for idx, (product_id, product) in enumerate(self.product_mapping.items()):
+                    vector = embeddings[idx].astype('float32')
+                    
+                    # Criar documento com metadata
+                    metadata = {
+                        'ean': product['ean'],
+                        'name': product['name'],
+                        'category': product.get('categoryName', ''),
+                        'brand': product.get('brandName', ''),
+                        'timestamp': timestamp
+                    }
+                    
+                    # Adicionar ao índice
+                    self.vector_index.load(
+                        keys=[f"prod:{product['ean']}"],
+                        vectors=[vector],
+                        metadatas=[metadata]
+                    )
+                
+                console.print("[green]✓ Embeddings salvos no Redis[/green]")
+
+    def load_embeddings(self, timestamp: str = None, load_format: str = 'numpy'):
+        """
+        Carrega embeddings salvos anteriormente.
+        
+        Args:
+            timestamp: Timestamp específico para carregar. Se None, usa o mais recente
+            load_format: Formato para carregar ('numpy', 'faiss', 'redis')
+        """
+        console.print(f"\n[bold cyan]Carregando embeddings (formato: {load_format})...[/bold cyan]")
+
+        if timestamp is None:
+            # Encontrar o arquivo mais recente baseado no formato
+            if load_format == 'numpy':
+                pattern = "embeddings_*.npy"
+                files = list(self.embeddings_dir.glob(pattern))
+            elif load_format == 'faiss':
+                pattern = "faiss_index_*.idx"
+                files = list(self.index_dir.glob(pattern))
+            else:
+                raise ValueError(f"Formato não suportado: {load_format}")
+
+            if not files:
+                raise FileNotFoundError(f"Nenhum arquivo encontrado com padrão {pattern}")
+                
+            latest_file = max(files, key=lambda x: x.stat().st_mtime)
+            timestamp = latest_file.stem.split('_')[1]
+
+        if load_format == 'numpy':
+            # Carregar embeddings
+            embeddings = np.load(self.embeddings_dir / f"embeddings_{timestamp}.npy")
+            
+            # Carregar mapeamento produto-índice
+            with open(self.metadata_dir / f"product_mapping_{timestamp}.pkl", 'rb') as f:
+                self.product_mapping = pickle.load(f)
+                
+            # Criar novo índice FAISS
+            dimension = embeddings.shape[1]
+            self.index = faiss.IndexFlatL2(dimension)
+            self.index.add(embeddings.astype('float32'))
+            
+            console.print("[green]✓ Embeddings carregados do numpy[/green]")
+
+        elif load_format == 'faiss':
+            # Carregar índice FAISS
+            self.index = faiss.read_index(
+                str(self.index_dir / f"faiss_index_{timestamp}.idx")
+            )
+            
+            # Carregar mapeamento produto-índice
+            with open(self.metadata_dir / f"product_mapping_{timestamp}.pkl", 'rb') as f:
+                self.product_mapping = pickle.load(f)
+                
+            console.print("[green]✓ Índice FAISS carregado[/green]")
+
+        elif load_format == 'redis':
+            if not self.redis_client:
+                self._initialize_redis()
+                
+            if self.vector_index:
+                console.print("[green]✓ Conectado ao índice Redis[/green]")
+                # Não precisamos carregar nada explicitamente do Redis
+                # Os vetores já estão disponíveis para consulta
+            
+        # Carregar metadados
+        try:
+            with open(self.metadata_dir / f"metadata_{timestamp}.json", 'r') as f:
+                metadata = json.load(f)
+                console.print("\n[bold cyan]Metadados do modelo carregado:[/bold cyan]")
+                for key, value in metadata.items():
+                    console.print(f"[blue]{key}:[/blue] {value}")
+        except FileNotFoundError:
+            console.print("[yellow]Arquivo de metadados não encontrado[/yellow]")
+
+    def find_similar_products_redis(self, product_ean: str, k: int = 5) -> List[Dict[str, Any]]:
+        """
+        Encontra produtos similares usando Redis Vector Search
+        """
+        if not self.vector_index:
+            raise ValueError("Redis não está configurado!")
+            
+        query = VectorQuery(
+            vector=self.model.encode(self.product_mapping[product_ean]['name']),
+            k=k + 1  # +1 porque o próprio produto será retornado
+        )
+        
+        results = self.vector_index.query(query)
+        
+        # Filtrar o próprio produto e formatar resultados
+        similar_products = []
+        for result in results:
+            if result.key != f"prod:{product_ean}":
+                similar_products.append({
+                    "product": result.metadata,
+                    "similarity_score": float(result.score)
+                })
+                
+        return similar_products[:k]
+
 def fetch_products(limit: int = 14000) -> List[Dict[str, Any]]:
     """
     Busca produtos da API GraphQL.
@@ -333,10 +549,28 @@ def main():
                 console.print(f"Marca: {similar.get('brandName', 'N/A')}")
                 console.print(f"Score de Similaridade: {score:.3f}")
                 console.print(f"Distância L2: {distance:.3f}")
-    
+            
+        # Salvar em todos os formatos
+        engine.save_embeddings(save_format='all')
+
+        # Ou escolher um formato específico
+        engine.save_embeddings(save_format='numpy')
+        engine.save_embeddings(save_format='faiss')
+        engine.save_embeddings(save_format='redis')
+        
+        # Encontrar produtos similares usando Redis
+        similar_products = engine.find_similar_products_redis('5600954501582')
+        console.print("\n[bold green]Produtos similares encontrados usando Redis:[/bold green]")
+        for item in similar_products:
+            similar = item["product"]
+            score = item["similarity_score"]
+            console.print(f"\n[cyan]Produto Similar:[/cyan]")
+            console.print(f"Nome: {similar['name']}")
+
     except Exception as e:
         console.print(f"\n[bold red]Erro durante a execução: {str(e)}[/bold red]")
         raise
 
 if __name__ == "__main__":
     main()
+    
