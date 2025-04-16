@@ -29,10 +29,10 @@ class ProductSimilarityEngine:
                 console.print("[yellow]Usando CPU[/yellow]")
                 self.device = torch.device("cpu")
                 
-        console.print(f"[yellow]Carregando modelo sentence-transformers: 'all-mpnet-base-v2 ' no dispositivo: {self.device}[/yellow]")
+        console.print(f"[yellow]Carregando modelo sentence-transformers: 'all-mpnet-base-v2' no dispositivo: {self.device}[/yellow]")
         
         # Carregar o modelo
-        self.model = SentenceTransformer('all-mpnet-base-v2 ')
+        self.model = SentenceTransformer('all-mpnet-base-v2')
         self.model.to(self.device)
         
         console.print("[green]✓ Modelo carregado com sucesso![/green]")
