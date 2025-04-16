@@ -1,0 +1,466 @@
+schema
+  @link(url: "https://specs.apollo.dev/link/v1.0")
+  @link(url: "https://specs.apollo.dev/join/v0.4", for: EXECUTION)
+{
+  query: Query
+  mutation: Mutation
+}
+
+directive @join__directive(graphs: [join__Graph!], name: String!, args: join__DirectiveArguments) repeatable on SCHEMA | OBJECT | INTERFACE | FIELD_DEFINITION
+
+directive @join__enumValue(graph: join__Graph!) repeatable on ENUM_VALUE
+
+directive @join__field(graph: join__Graph, requires: join__FieldSet, provides: join__FieldSet, type: String, external: Boolean, override: String, usedOverridden: Boolean, overrideLabel: String) repeatable on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
+
+directive @join__graph(name: String!, url: String!) on ENUM_VALUE
+
+directive @join__implements(graph: join__Graph!, interface: String!) repeatable on OBJECT | INTERFACE
+
+directive @join__type(graph: join__Graph!, key: join__FieldSet, extension: Boolean! = false, resolvable: Boolean! = true, isInterfaceObject: Boolean! = false) repeatable on OBJECT | INTERFACE | UNION | ENUM | INPUT_OBJECT | SCALAR
+
+directive @join__unionMember(graph: join__Graph!, member: String!) repeatable on UNION
+
+directive @link(url: String, as: String, for: link__Purpose, import: [link__Import]) repeatable on SCHEMA
+
+type Brand
+  @join__type(graph: BRANDS, key: "name")
+  @join__type(graph: PRODUCTS, key: "name", extension: true)
+{
+  name: String!
+  friendlyName: String! @join__field(graph: BRANDS)
+  children: [Brand!]! @join__field(graph: BRANDS)
+  parents: [Brand!]! @join__field(graph: BRANDS)
+  products: [Product!]! @join__field(graph: PRODUCTS)
+}
+
+input BrandBase
+  @join__type(graph: BRANDS)
+{
+  name: String!
+}
+
+type Category
+  @join__type(graph: CATEGORIES, key: "name")
+  @join__type(graph: PRODUCTS, key: "name", extension: true)
+{
+  name: String!
+  friendlyName: String! @join__field(graph: CATEGORIES)
+  children: [Category!]! @join__field(graph: CATEGORIES)
+  parents: [Category!]! @join__field(graph: CATEGORIES)
+  products: [Product!]! @join__field(graph: PRODUCTS)
+}
+
+input CategoryBase
+  @join__type(graph: CATEGORIES)
+{
+  name: String!
+}
+
+input CompositeKeyInput
+  @join__type(graph: USERS)
+{
+  listId: String!
+  productEan: String!
+}
+
+type CompositeKeyType
+  @join__type(graph: USERS)
+{
+  listId: String!
+  productEan: String!
+}
+
+input Coordinate
+  @join__type(graph: SUPERMARKETS)
+{
+  latitude: Float!
+  longitude: Float!
+  distance: Float!
+}
+
+input CoordinateFilter
+  @join__type(graph: SUPERMARKETS)
+{
+  value: Coordinate!
+  op: Operator!
+}
+
+"""Date with time (isoformat)"""
+scalar DateTime
+  @join__type(graph: USERS)
+
+enum Gender
+  @join__type(graph: USERS)
+{
+  MALE @join__enumValue(graph: USERS)
+  FEMALE @join__enumValue(graph: USERS)
+  NON_BINARY @join__enumValue(graph: USERS)
+  OTHER @join__enumValue(graph: USERS)
+}
+
+input IntFilter
+  @join__type(graph: SUPERMARKETS)
+{
+  value: Int!
+  op: Operator!
+}
+
+scalar join__DirectiveArguments
+
+scalar join__FieldSet
+
+enum join__Graph {
+  BRANDS @join__graph(name: "brands", url: "http://findit-brand-service-1:8000/graphql")
+  CATEGORIES @join__graph(name: "categories", url: "http://findit-category-service-1:8000/graphql")
+  PRODUCTS @join__graph(name: "products", url: "http://findit-product-service-1:8000/graphql")
+  SUPERMARKETS @join__graph(name: "supermarkets", url: "http://findit-supermarket-service-1:8000/graphql")
+  USERS @join__graph(name: "users", url: "http://findit-user-service-1:8000/graphql")
+}
+
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf).
+"""
+scalar JSON
+  @join__type(graph: PRODUCTS)
+  @specifiedBy(url: "https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf")
+
+scalar link__Import
+
+enum link__Purpose {
+  """
+  `SECURITY` features provide metadata necessary to securely resolve fields.
+  """
+  SECURITY
+
+  """
+  `EXECUTION` features provide metadata necessary for operation execution.
+  """
+  EXECUTION
+}
+
+type ListProduct
+  @join__type(graph: USERS)
+{
+  product: Product!
+  supermarket: Supermarket!
+  id_composite: CompositeKeyType!
+  quantity: Float!
+  supermarket_id: Int!
+  status: Status!
+}
+
+input ListProductInput
+  @join__type(graph: USERS)
+{
+  id_composite: CompositeKeyInput!
+  quantity: Float!
+  supermarket_id: Int!
+  status: Status! = ACTIVE
+}
+
+type Mutation
+  @join__type(graph: BRANDS)
+  @join__type(graph: CATEGORIES)
+  @join__type(graph: PRODUCTS)
+  @join__type(graph: USERS)
+{
+  createBrand(model: BrandBase!): Brand! @join__field(graph: BRANDS)
+  updateBrand(name: String!, model: BrandBase!): Brand! @join__field(graph: BRANDS)
+  deleteBrand(name: String!): Boolean! @join__field(graph: BRANDS)
+  createCategory(model: CategoryBase!): Category! @join__field(graph: CATEGORIES)
+  updateCategory(name: String!, model: CategoryBase!): Category! @join__field(graph: CATEGORIES)
+  deleteCategory(name: String!): Boolean! @join__field(graph: CATEGORIES)
+  createProduct(model: ProductInput!): Product! @join__field(graph: PRODUCTS)
+  deleteProduct(name: String!): Boolean! @join__field(graph: PRODUCTS)
+  upsertUser(model: UserInput!): User! @join__field(graph: USERS)
+  createList(userId: String!): SupermarketList @join__field(graph: USERS)
+  upsertProductFromList(model: ListProductInput!): ListProduct @join__field(graph: USERS)
+  deleteUser(id: String!): Boolean! @join__field(graph: USERS)
+  deleteProductFromList(ids: CompositeKeyInput!): Boolean! @join__field(graph: USERS)
+  deleteList(id: String!): Boolean! @join__field(graph: USERS)
+}
+
+enum NutriScore
+  @join__type(graph: PRODUCTS)
+{
+  A @join__enumValue(graph: PRODUCTS)
+  B @join__enumValue(graph: PRODUCTS)
+  C @join__enumValue(graph: PRODUCTS)
+  D @join__enumValue(graph: PRODUCTS)
+  E @join__enumValue(graph: PRODUCTS)
+  UNKNOWN @join__enumValue(graph: PRODUCTS)
+  NOT_APPLICABLE @join__enumValue(graph: PRODUCTS)
+}
+
+input NutriScoreFilter
+  @join__type(graph: PRODUCTS)
+{
+  value: NutriScore!
+  op: Operator!
+}
+
+enum Operator
+  @join__type(graph: PRODUCTS)
+  @join__type(graph: SUPERMARKETS)
+{
+  EQ @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  NE @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  LT @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  LE @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  GT @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  GE @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  LIKE @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  ILIKE @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  IN @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  NOT_IN @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  IS @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  IS_NOT @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  CONTAINS @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  NOT_CONTAINS @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  ANY @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+  ALL @join__enumValue(graph: PRODUCTS) @join__enumValue(graph: SUPERMARKETS)
+}
+
+enum PathType
+  @join__type(graph: USERS)
+{
+  SHORTEST @join__enumValue(graph: USERS)
+  CHEAPEST @join__enumValue(graph: USERS)
+  FASTEST @join__enumValue(graph: USERS)
+}
+
+type Preferences
+  @join__type(graph: USERS)
+{
+  supermarketsLike: [Int!]!
+  supermarketsDislike: [Int!]!
+  brandsLike: [String!]!
+  brandsDislike: [String!]!
+  maxDistance: Float!
+  budget: Float!
+  pathType: PathType!
+}
+
+input PreferencesInput
+  @join__type(graph: USERS)
+{
+  supermarketsLike: [Int!]! = []
+  supermarketsDislike: [Int!]! = []
+  brandsLike: [String!]! = []
+  brandsDislike: [String!]! = []
+  maxDistance: Float! = 100
+  budget: Float! = -1
+  pathType: PathType! = CHEAPEST
+}
+
+type Product
+  @join__type(graph: PRODUCTS, key: "ean", resolvable: true)
+  @join__type(graph: SUPERMARKETS, key: "ean", extension: true)
+  @join__type(graph: USERS, key: "ean", extension: true)
+{
+  ean: String!
+  name: String! @join__field(graph: PRODUCTS)
+  genericName: String! @join__field(graph: PRODUCTS)
+  nutrition: JSON! @join__field(graph: PRODUCTS)
+  nutriScore: NutriScore! @join__field(graph: PRODUCTS)
+  ingredients: String! @join__field(graph: PRODUCTS)
+  quantity: String! @join__field(graph: PRODUCTS)
+  unit: String! @join__field(graph: PRODUCTS)
+  keywords: [String!]! @join__field(graph: PRODUCTS)
+  images: [String!]! @join__field(graph: PRODUCTS)
+  brandName: String @join__field(graph: PRODUCTS)
+  categoryName: String @join__field(graph: PRODUCTS)
+  category: Category! @join__field(graph: PRODUCTS)
+  brand: Brand! @join__field(graph: PRODUCTS)
+  supermarkets: [SupermarketWithPrice!]! @join__field(graph: SUPERMARKETS)
+}
+
+input ProductFilter
+  @join__type(graph: PRODUCTS)
+{
+  ean: StrFilter = null
+  name: StrFilter = null
+  genericName: StrFilter = null
+  nutriScore: NutriScoreFilter = null
+  ingredients: StrFilter = null
+  quantity: StrFilter = null
+  unit: StrFilter = null
+  keywords: StrListFilter = null
+  images: StrListFilter = null
+  brandName: StrFilter = null
+  categoryName: StrFilter = null
+}
+
+input ProductInput
+  @join__type(graph: PRODUCTS)
+{
+  ean: String!
+  name: String!
+  genericName: String!
+  nutrition: JSON!
+  nutriScore: NutriScore!
+  ingredients: String!
+  quantity: String!
+  unit: String!
+  keywords: [String!]!
+  images: [String!]!
+  brandName: String
+  categoryName: String
+}
+
+type ProductWithPrice
+  @join__type(graph: SUPERMARKETS)
+{
+  price: Float!
+  product: Product!
+}
+
+type Query
+  @join__type(graph: BRANDS)
+  @join__type(graph: CATEGORIES)
+  @join__type(graph: PRODUCTS)
+  @join__type(graph: SUPERMARKETS)
+  @join__type(graph: USERS)
+{
+  brand(name: String!): Brand @join__field(graph: BRANDS)
+  brands(name: String!): [Brand!]! @join__field(graph: BRANDS)
+  category(name: String!): Category @join__field(graph: CATEGORIES)
+  categories(name: String!): [Category!]! @join__field(graph: CATEGORIES)
+  product(ean: String!): Product @join__field(graph: PRODUCTS)
+  products(filters: ProductFilter!): [Product!]! @join__field(graph: PRODUCTS)
+  supermarketLocation(supermarketId: Int!, id: Int!): SupermarketLocation @join__field(graph: SUPERMARKETS)
+  supermarketLocations(filters: SupermarketLocationFilter!): [SupermarketLocation!]! @join__field(graph: SUPERMARKETS)
+  supermarket(id: Int!): Supermarket @join__field(graph: SUPERMARKETS)
+  supermarkets(filters: SupermarketFilter!): [Supermarket!]! @join__field(graph: SUPERMARKETS)
+  user(id: String!): User @join__field(graph: USERS)
+}
+
+enum Status
+  @join__type(graph: USERS)
+{
+  COMPLETED @join__enumValue(graph: USERS)
+  SKIPPED @join__enumValue(graph: USERS)
+  ACTIVE @join__enumValue(graph: USERS)
+}
+
+input StrFilter
+  @join__type(graph: PRODUCTS)
+  @join__type(graph: SUPERMARKETS)
+{
+  value: String!
+  op: Operator!
+}
+
+input StrListFilter
+  @join__type(graph: PRODUCTS)
+{
+  value: [String!]!
+  op: Operator!
+}
+
+type Supermarket
+  @join__type(graph: SUPERMARKETS, key: "id", resolvable: true)
+  @join__type(graph: USERS, key: "id", extension: true)
+{
+  id: Int!
+  name: String! @join__field(graph: SUPERMARKETS)
+  image: String @join__field(graph: SUPERMARKETS)
+  services: [SupermarketServices!]! @join__field(graph: SUPERMARKETS)
+  description: String @join__field(graph: SUPERMARKETS)
+  locations: [SupermarketLocation!]! @join__field(graph: SUPERMARKETS)
+  products: [ProductWithPrice!]! @join__field(graph: SUPERMARKETS)
+}
+
+input SupermarketFilter
+  @join__type(graph: SUPERMARKETS)
+{
+  id: IntFilter = null
+  name: StrFilter = null
+  image: StrFilter = null
+  services: SupermarketServicesListFilter = null
+  description: StrFilter = null
+}
+
+type SupermarketList
+  @join__type(graph: USERS)
+{
+  """MongoDB document ObjectID"""
+  _id: String!
+  timestamp: DateTime!
+  products: [ListProduct!]!
+  status: Status!
+}
+
+type SupermarketLocation
+  @join__type(graph: SUPERMARKETS)
+{
+  supermarketId: Int!
+  id: Int!
+  name: String
+  image: String
+  latitude: Float!
+  longitude: Float!
+  supermarket: Supermarket
+}
+
+input SupermarketLocationFilter
+  @join__type(graph: SUPERMARKETS)
+{
+  supermarketId: IntFilter = null
+  id: IntFilter = null
+  name: StrFilter = null
+  image: StrFilter = null
+  coordinates: CoordinateFilter = null
+}
+
+enum SupermarketServices
+  @join__type(graph: SUPERMARKETS)
+{
+  COFFEE @join__enumValue(graph: SUPERMARKETS)
+  GAS_STATION @join__enumValue(graph: SUPERMARKETS)
+  NEWSSTAND @join__enumValue(graph: SUPERMARKETS)
+  PHARMACY @join__enumValue(graph: SUPERMARKETS)
+  RESTAURANT @join__enumValue(graph: SUPERMARKETS)
+  SELF_KIOSK @join__enumValue(graph: SUPERMARKETS)
+}
+
+input SupermarketServicesListFilter
+  @join__type(graph: SUPERMARKETS)
+{
+  value: [SupermarketServices!]!
+  op: Operator!
+}
+
+type SupermarketWithPrice
+  @join__type(graph: SUPERMARKETS)
+{
+  price: Float!
+  supermarket: Supermarket!
+}
+
+type User
+  @join__type(graph: USERS)
+{
+  actualList: SupermarketList
+
+  """MongoDB document ObjectID"""
+  _id: String!
+  first_name: String!
+  last_name: String!
+  email: String!
+  birth_date: String!
+  gender: Gender!
+  supermarketLists: [SupermarketList!]!
+  preferences: Preferences!
+}
+
+input UserInput
+  @join__type(graph: USERS)
+{
+  first_name: String!
+  last_name: String!
+  email: String!
+  birth_date: String!
+  gender: Gender! = OTHER
+  preferences: PreferencesInput = {budget: -1}
+}

@@ -6,25 +6,14 @@ authors = [{ name = "andre", email = "andrepedro2004@hotmail.com" }]
 requires-python = ">=3.11,<3.13"
 readme = "README.md"
 dependencies = [
-    "fastapi (>=0.115.11,<0.116.0)",
-    "uvicorn (>=0.34.0,<0.35.0)",
-    "apache-airflow (>=2.10.5,<3.0.0)",
-    "httpx (>=0.28.1,<0.29.0)",
-    "psycopg2-binary (>=2.9.10,<3.0.0)",
-    "redis (>=5.2.1,<6.0.0)",
-    "pandas (>=2.2.3,<3.0.0)",
-    "numpy (>=2.2.4,<3.0.0)",
-    "asyncpg (>=0.30.0,<0.31.0)",
-    "torch (>=2.6.0,<3.0.0)",
-    "sentence-transformers (>=4.0.2,<5.0.0)",
-    "scikit-learn (>=1.6.1,<2.0.0)",
-    "optuna (>=4.2.1,<5.0.0)",
-    "qdrant-client (>=1.13.3,<2.0.0)",
-    "hnswlib (>=0.8.0,<0.9.0)",
-    "airflow-providers (>=0.3.0,<0.4.0)",
-    "apache-airflow-providers-postgres (>=6.1.2,<7.0.0)",
-    "apache-airflow-providers-redis (>=4.0.2,<5.0.0)",
-    "apache-airflow-providers-mongo (>=5.0.2,<6.0.0)",
+    "faiss-cpu>=1.10.0",
+    "fastapi>=0.115.12",
+    "numpy>=2.2.4",
+    "pandas>=2.2.3",
+    "redisvl>=0.3.9",
+    "requests>=2.32.3",
+    "strawberry-graphql>=0.265.1",
+    "sentence-transformers"
 ]
 
 [dependency-groups]
