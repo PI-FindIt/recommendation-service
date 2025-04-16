@@ -161,52 +161,54 @@ class ProductSimilarityEngine:
     
     def build_index(self, products: List[Dict[str, Any]]):
         """
-        Constrói o índice FAISS com os embeddings combinados dos produtos.
+        Constrói o índice FAISS com os embeddings dos produtos.
         """
+        if not products:
+            raise ValueError("Lista de produtos está vazia!")
+        
         console.print(f"\n[bold cyan]Iniciando construção do índice para {len(products)} produtos...[/bold cyan]")
         
-        all_embeddings = []
-        
-        # Processar cada produto
-        for i, product in enumerate(track(products, description="Gerando embeddings")):
+        try:
             # Gerar embeddings para cada campo
-            field_embeddings = self._generate_field_embeddings(product)
+            all_embeddings = []
+            self.product_mapping = {}
             
-            # Se é o primeiro produto, mostrar detalhes dos embeddings
-            if i == 0:
-                console.print("\n[bold green]Detalhes dos embeddings para o primeiro produto:[/bold green]")
-                table = Table(show_header=True, header_style="bold magenta")
-                table.add_column("Campo")
-                table.add_column("Dimensões")
-                table.add_column("Norma")
-                
-                for field, emb in field_embeddings.items():
-                    table.add_row(
-                        field,
-                        str(emb.shape),
-                        f"{np.linalg.norm(emb):.3f}"
-                    )
-                console.print(table)
+            for i, product in enumerate(track(products, description="Gerando embeddings")):
+                try:
+                    # Gerar embeddings para os campos do produto
+                    field_embeddings = self._generate_field_embeddings(product)
+                    
+                    # Combinar embeddings
+                    combined = self._combine_embeddings(field_embeddings)
+                    
+                    # Adicionar ao array de embeddings
+                    all_embeddings.append(combined)
+                    
+                    # Mapear produto
+                    self.product_mapping[i] = product
+                    
+                except Exception as e:
+                    console.print(f"[yellow]Aviso: Erro ao processar produto {i}: {str(e)}[/yellow]")
+                    continue
             
-            # Combinar embeddings
-            combined = self._combine_embeddings(field_embeddings)
-            all_embeddings.append(combined)
-        
-        # Converter para array numpy
-        embeddings_array = np.array(all_embeddings).astype('float32')
-        
-        # Criar índice FAISS
-        console.print("\n[yellow]Construindo índice FAISS...[/yellow]")
-        dimension = embeddings_array.shape[1]
-        self.index = faiss.IndexFlatL2(dimension)
-        self.index.add(embeddings_array)
-        
-        # Mapear índices para produtos
-        self.product_mapping = {i: product for i, product in enumerate(products)}
-        
-        console.print(f"[bold green]✓ Índice construído com sucesso![/bold green]")
-        console.print(f"[blue]Dimensão dos vetores: {dimension}[/blue]")
-        console.print(f"[blue]Número total de produtos indexados: {self.index.ntotal}[/blue]")
+            if not all_embeddings:
+                raise ValueError("Nenhum embedding foi gerado!")
+            
+            # Converter para array numpy
+            embeddings_array = np.array(all_embeddings).astype('float32')
+            
+            # Criar e popular índice FAISS
+            dimension = embeddings_array.shape[1]
+            self.index = faiss.IndexFlatL2(dimension)
+            self.index.add(embeddings_array)
+            
+            console.print(f"[green]✓ Índice construído com sucesso![/green]")
+            console.print(f"[blue]Dimensão dos vetores: {dimension}[/blue]")
+            console.print(f"[blue]Número de produtos indexados: {self.index.ntotal}[/blue]")
+            
+        except Exception as e:
+            console.print(f"[bold red]Erro ao construir índice: {str(e)}[/bold red]")
+            raise
     
     def find_similar_products(self, product_idx: int, k: int = 5) -> List[Dict[str, Any]]:
         """
@@ -308,76 +310,91 @@ class ProductSimilarityEngine:
         Args:
             save_format: Formato de salvamento ('numpy', 'faiss', 'redis', 'all')
         """
-        if not self.index or not self.product_mapping:
-            raise ValueError("Nenhum embedding para salvar! Execute build_index primeiro.")
+        # Verificações iniciais
+        if not hasattr(self, 'index') or self.index is None:
+            raise ValueError("Índice FAISS não foi inicializado! Execute build_index primeiro.")
+        
+        if not hasattr(self, 'product_mapping') or not self.product_mapping:
+            raise ValueError("Mapeamento de produtos não foi inicializado!")
+        
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            console.print(f"\n[bold cyan]Salvando embeddings (formato: {save_format})...[/bold cyan]")
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        console.print(f"\n[bold cyan]Salvando embeddings (formato: {save_format})...[/bold cyan]")
+            # Verificar se podemos extrair os embeddings
+            try:
+                embeddings = faiss.vector_to_array(self.index.get_xb())
+                if embeddings.size == 0:
+                    raise ValueError("Nenhum embedding encontrado no índice FAISS!")
+                embeddings = embeddings.reshape(-1, self.index.d)
+            except Exception as e:
+                raise ValueError(f"Erro ao extrair embeddings do índice FAISS: {str(e)}")
 
-        # Extrair embeddings do índice FAISS
-        embeddings = faiss.vector_to_array(self.index.get_xb()).reshape(-1, self.index.d)
-
-        if save_format in ['numpy', 'all']:
-            # Salvar embeddings em formato numpy
-            np.save(
-                self.embeddings_dir / f"embeddings_{timestamp}.npy",
-                embeddings
-            )
-            
-            # Salvar mapeamento produto-índice
-            with open(self.metadata_dir / f"product_mapping_{timestamp}.pkl", 'wb') as f:
-                pickle.dump(self.product_mapping, f)
+            if save_format in ['numpy', 'all']:
+                # Salvar embeddings em formato numpy
+                np.save(
+                    self.embeddings_dir / f"embeddings_{timestamp}.npy",
+                    embeddings
+                )
                 
-            # Salvar configurações e metadados
-            metadata = {
-                'timestamp': timestamp,
-                'model_name': 'all-MiniLM-L6-v2',
-                'embedding_dim': self.index.d,
-                'num_products': len(self.product_mapping),
-                'field_weights': self.field_weights
-            }
-            
-            with open(self.metadata_dir / f"metadata_{timestamp}.json", 'w') as f:
-                json.dump(metadata, f, indent=2)
-                
-            console.print("[green]✓ Embeddings salvos em formato numpy[/green]")
-
-        if save_format in ['faiss', 'all']:
-            # Salvar índice FAISS
-            faiss.write_index(
-                self.index,
-                str(self.index_dir / f"faiss_index_{timestamp}.idx")
-            )
-            console.print("[green]✓ Índice FAISS salvo[/green]")
-
-        if save_format in ['redis', 'all']:
-            # Inicializar Redis se necessário
-            if not self.redis_client:
-                self._initialize_redis()
-                
-            if self.redis_client:
-                # Salvar embeddings no Redis
-                pipe = self.redis_client.pipeline()
-                
-                for idx, (product_id, product) in enumerate(self.product_mapping.items()):
-                    vector = embeddings[idx].astype('float32').tolist()
+                # Salvar mapeamento produto-índice
+                with open(self.metadata_dir / f"product_mapping_{timestamp}.pkl", 'wb') as f:
+                    pickle.dump(self.product_mapping, f)
                     
-                    # Criar documento com metadata e embedding
-                    data = {
-                        'ean': product['ean'],
-                        'name': product['name'],
-                        'category': product.get('categoryName', ''),
-                        'brand': product.get('brandName', ''),
-                        'timestamp': timestamp,
-                        'embedding': vector
-                    }
-                    
-                    # Adicionar ao Redis
-                    pipe.json().set(f"prod:{product['ean']}", '$', data)
+                # Salvar configurações e metadados
+                metadata = {
+                    'timestamp': timestamp,
+                    'model_name': 'all-MiniLM-L6-v2',
+                    'embedding_dim': self.index.d,
+                    'num_products': len(self.product_mapping),
+                    'field_weights': self.field_weights
+                }
                 
-                # Executar todas as operações
-                pipe.execute()
-                console.print("[green]✓ Embeddings salvos no Redis[/green]")
+                with open(self.metadata_dir / f"metadata_{timestamp}.json", 'w') as f:
+                    json.dump(metadata, f, indent=2)
+                    
+                console.print("[green]✓ Embeddings salvos em formato numpy[/green]")
+
+            if save_format in ['faiss', 'all']:
+                # Salvar índice FAISS
+                faiss.write_index(
+                    self.index,
+                    str(self.index_dir / f"faiss_index_{timestamp}.idx")
+                )
+                console.print("[green]✓ Índice FAISS salvo[/green]")
+
+            if save_format in ['redis', 'all']:
+                # Inicializar Redis se necessário
+                if not self.redis_client:
+                    self._initialize_redis()
+                    
+                if self.redis_client:
+                    # Salvar embeddings no Redis
+                    pipe = self.redis_client.pipeline()
+                    
+                    for idx, (product_id, product) in enumerate(self.product_mapping.items()):
+                        vector = embeddings[idx].astype('float32').tolist()
+                        
+                        # Criar documento com metadata e embedding
+                        data = {
+                            'ean': product['ean'],
+                            'name': product['name'],
+                            'category': product.get('categoryName', ''),
+                            'brand': product.get('brandName', ''),
+                            'timestamp': timestamp,
+                            'embedding': vector
+                        }
+                        
+                        # Adicionar ao Redis
+                        pipe.json().set(f"prod:{product['ean']}", '$', data)
+                    
+                    # Executar todas as operações
+                    pipe.execute()
+                    console.print("[green]✓ Embeddings salvos no Redis[/green]")
+
+        except Exception as e:
+            console.print(f"[bold red]Erro ao salvar embeddings: {str(e)}[/bold red]")
+            raise
 
     def load_embeddings(self, timestamp: str = None, load_format: str = 'numpy'):
         """
@@ -514,7 +531,7 @@ def fetch_products(limit: int = 14000) -> List[Dict[str, Any]]:
         }
     }
     """
-    
+        
     variables = {
         "filters": {}
     }
