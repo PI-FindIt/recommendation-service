@@ -8,14 +8,33 @@ from rich.console import Console
 from rich.progress import track
 from rich.table import Table
 import time
+import torch
 
 console = Console()
 
 class ProductSimilarityEngine:
     def __init__(self):
         console.print("[bold blue]Inicializando ProductSimilarityEngine...[/bold blue]")
-        console.print(f"[yellow]Carregando modelo sentence-transformers: 'all-mpnet-base-v2'[/yellow]")
-        self.model = SentenceTransformer('all-mpnet-base-v2')
+        
+        # Verificar disponibilidade do MPS
+        if torch.backends.mps.is_available():
+            console.print("[green]MPS (Metal Performance Shaders) está disponível![/green]")
+            self.device = torch.device("mps")
+        else:
+            console.print("[yellow]MPS não disponível, usando CPU[/yellow]")
+            if torch.cuda.is_available():
+                console.print("[green]CUDA disponível, usando GPU[/green]")
+                self.device = torch.device("cuda")
+            else:
+                console.print("[yellow]Usando CPU[/yellow]")
+                self.device = torch.device("cpu")
+                
+        console.print(f"[yellow]Carregando modelo sentence-transformers: 'all-MiniLM-L6-v2' no dispositivo: {self.device}[/yellow]")
+        
+        # Carregar o modelo
+        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.model.to(self.device)
+        
         console.print("[green]✓ Modelo carregado com sucesso![/green]")
         
         # Definir pesos para cada campo
@@ -47,27 +66,51 @@ class ProductSimilarityEngine:
         
         # Nome do produto
         if product.get('name'):
-            embeddings['name'] = self.model.encode(product['name'])
+            embeddings['name'] = self.model.encode(
+                product['name'],
+                convert_to_numpy=True,
+                device=self.device
+            )
             
         # Nome genérico
         if product.get('genericName'):
-            embeddings['generic_name'] = self.model.encode(product['genericName'])
+            embeddings['generic_name'] = self.model.encode(
+                product['genericName'],
+                convert_to_numpy=True,
+                device=self.device
+            )
             
         # Categoria
         if product.get('categoryName'):
-            embeddings['category'] = self.model.encode(product['categoryName'])
+            embeddings['category'] = self.model.encode(
+                product['categoryName'],
+                convert_to_numpy=True,
+                device=self.device
+            )
             
         # Marca
         if product.get('brandName'):
-            embeddings['brand'] = self.model.encode(product['brandName'])
+            embeddings['brand'] = self.model.encode(
+                product['brandName'],
+                convert_to_numpy=True,
+                device=self.device
+            )
             
         # Keywords
         if product.get('keywords') and len(product['keywords']) > 0:
-            embeddings['keywords'] = self.model.encode(' '.join(product['keywords']))
+            embeddings['keywords'] = self.model.encode(
+                ' '.join(product['keywords']),
+                convert_to_numpy=True,
+                device=self.device
+            )
             
         # Ingredientes
         if product.get('ingredients'):
-            embeddings['ingredients'] = self.model.encode(product['ingredients'])
+            embeddings['ingredients'] = self.model.encode(
+                product['ingredients'],
+                convert_to_numpy=True,
+                device=self.device
+            )
             
         return embeddings
     
