@@ -278,7 +278,7 @@ class ProductSimilarityEngine:
         
         return results
 
-    def _initialize_redis(self, redis_url: str = "redis://localhost:6379"):
+    def _initialize_redis(self, redis_url: str = "redis://  :6379"):
         """
         Inicializa a conexão com Redis e cria o índice de vetores
         """
@@ -409,6 +409,7 @@ class ProductSimilarityEngine:
                         
                         # Adicionar ao Redis
                         pipe.json().set(f"prod:{product['ean']}", '$', data)
+                        console.print(f"[green  ]Produto {product['ean']} salvo no Redis[/green]")
                     
                     # Executar todas as operações
                     pipe.execute()
