@@ -315,7 +315,7 @@ class ProductSimilarityEngine:
             console.print(f"[red]Erro ao conectar com Redis: {e}[/red]")
             self.redis_client = None
 
-    def save_embeddings(self, save_format: str = "all"):
+    def     save_embeddings(self, save_format: str = "all"):
         """
         Salva os embeddings e metadados em diferentes formatos.
         
@@ -344,7 +344,7 @@ class ProductSimilarityEngine:
                 
                 # Reconstruir os vetores do índice
                 for i in range(num_vectors):
-                    embeddings[i] = faiss.vector_to_array(self.index.reconstruct(i))
+                    embeddings[i] = self.index.reconstruct(i)
                     
                 if embeddings.size == 0:
                     raise ValueError("Nenhum embedding encontrado no índice FAISS!")
