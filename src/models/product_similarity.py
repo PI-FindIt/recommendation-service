@@ -6,6 +6,7 @@ import requests
 from rich import print
 from rich.console import Console
 from rich.progress import track
+from rich.table import Table
 import time
 
 console = Console()
@@ -17,69 +18,122 @@ class ProductSimilarityEngine:
         self.model = SentenceTransformer('all-mpnet-base-v2')
         console.print("[green]✓ Modelo carregado com sucesso![/green]")
         
+        # Definir pesos para cada campo
+        self.field_weights = {
+            'name': 0.35,        # Nome do produto é muito importante
+            'generic_name': 0.15, # Nome genérico tem relevância média
+            'category': 0.20,    # Categoria é importante para similaridade
+            'brand': 0.15,       # Marca tem relevância média
+            'keywords': 0.10,    # Keywords ajudam na contextualização
+            'ingredients': 0.05   # Ingredientes têm menor peso mas ainda são relevantes
+        }
+        
+        console.print("\n[bold cyan]Pesos definidos para cada campo:[/bold cyan]")
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Campo")
+        table.add_column("Peso")
+        for field, weight in self.field_weights.items():
+            table.add_row(field, f"{weight:.2f}")
+        console.print(table)
+        
         self.product_mapping: Dict[int, Dict] = {}
         self.index = None
         
-    def _create_product_description(self, product: Dict[str, Any]) -> str:
+    def _generate_field_embeddings(self, product: Dict[str, Any]) -> Dict[str, np.ndarray]:
         """
-        Cria uma descrição rica do produto para gerar embeddings mais significativos.
+        Gera embeddings separados para cada campo do produto.
         """
-        parts = []
+        embeddings = {}
         
-        # Nome e nome genérico
-        parts.append(f"nome: {product['name']}")
-        parts.append(f"nome genérico: {product['genericName']}")
-        
-        # Categoria e marca se disponíveis
+        # Nome do produto
+        if product.get('name'):
+            embeddings['name'] = self.model.encode(product['name'])
+            
+        # Nome genérico
+        if product.get('genericName'):
+            embeddings['generic_name'] = self.model.encode(product['genericName'])
+            
+        # Categoria
         if product.get('categoryName'):
-            parts.append(f"categoria: {product['categoryName']}")
+            embeddings['category'] = self.model.encode(product['categoryName'])
+            
+        # Marca
         if product.get('brandName'):
-            parts.append(f"marca: {product['brandName']}")
+            embeddings['brand'] = self.model.encode(product['brandName'])
             
-        # Keywords se disponíveis
-        if product.get('keywords'):
-            parts.append(f"palavras-chave: {' '.join(product['keywords'])}")
+        # Keywords
+        if product.get('keywords') and len(product['keywords']) > 0:
+            embeddings['keywords'] = self.model.encode(' '.join(product['keywords']))
             
-        # Ingredientes se disponíveis
+        # Ingredientes
         if product.get('ingredients'):
-            parts.append(f"ingredientes: {product['ingredients']}")
+            embeddings['ingredients'] = self.model.encode(product['ingredients'])
             
-        final_description = " | ".join(filter(None, parts))
-        return final_description
+        return embeddings
+    
+    def _combine_embeddings(self, field_embeddings: Dict[str, np.ndarray]) -> np.ndarray:
+        """
+        Combina os embeddings de diferentes campos usando os pesos definidos.
+        """
+        # Inicializar com zeros usando a dimensão do primeiro embedding disponível
+        first_embedding = next(iter(field_embeddings.values()))
+        combined = np.zeros_like(first_embedding)
+        
+        # Soma ponderada dos embeddings disponíveis
+        used_weights_sum = 0
+        for field, embedding in field_embeddings.items():
+            weight = self.field_weights[field]
+            combined += embedding * weight
+            used_weights_sum += weight
+            
+        # Normalizar pelo soma dos pesos usados
+        if used_weights_sum > 0:
+            combined = combined / used_weights_sum
+            
+        # Normalizar o vetor final
+        return combined / np.linalg.norm(combined)
     
     def build_index(self, products: List[Dict[str, Any]]):
         """
-        Constrói o índice FAISS com os embeddings dos produtos.
+        Constrói o índice FAISS com os embeddings combinados dos produtos.
         """
         console.print(f"\n[bold cyan]Iniciando construção do índice para {len(products)} produtos...[/bold cyan]")
         
-        # Criar descrições ricas para cada produto
-        console.print("\n[yellow]Gerando descrições ricas para cada produto...[/yellow]")
-        descriptions = []
-        for product in track(products, description="Processando produtos"):
-            desc = self._create_product_description(product)
-            descriptions.append(desc)
+        all_embeddings = []
+        
+        # Processar cada produto
+        for i, product in enumerate(track(products, description="Gerando embeddings")):
+            # Gerar embeddings para cada campo
+            field_embeddings = self._generate_field_embeddings(product)
             
-        # Mostrar algumas descrições de exemplo
-        console.print("\n[bold green]Exemplos de descrições geradas:[/bold green]")
-        for i in range(min(3, len(descriptions))):
-            console.print(f"[cyan]Produto {i+1}:[/cyan] {descriptions[i][:200]}...")
+            # Se é o primeiro produto, mostrar detalhes dos embeddings
+            if i == 0:
+                console.print("\n[bold green]Detalhes dos embeddings para o primeiro produto:[/bold green]")
+                table = Table(show_header=True, header_style="bold magenta")
+                table.add_column("Campo")
+                table.add_column("Dimensões")
+                table.add_column("Norma")
+                
+                for field, emb in field_embeddings.items():
+                    table.add_row(
+                        field,
+                        str(emb.shape),
+                        f"{np.linalg.norm(emb):.3f}"
+                    )
+                console.print(table)
+            
+            # Combinar embeddings
+            combined = self._combine_embeddings(field_embeddings)
+            all_embeddings.append(combined)
         
-        # Gerar embeddings
-        console.print("\n[yellow]Gerando embeddings para as descrições...[/yellow]")
-        start_time = time.time()
-        embeddings = self.model.encode(descriptions, show_progress_bar=True)
-        embeddings = np.array(embeddings).astype('float32')
-        end_time = time.time()
-        
-        console.print(f"[green]✓ Embeddings gerados em {end_time - start_time:.2f} segundos[/green]")
-        console.print(f"[blue]Forma do tensor de embeddings: {embeddings.shape}[/blue]")
+        # Converter para array numpy
+        embeddings_array = np.array(all_embeddings).astype('float32')
         
         # Criar índice FAISS
         console.print("\n[yellow]Construindo índice FAISS...[/yellow]")
-        dimension = embeddings.shape[1]
+        dimension = embeddings_array.shape[1]
         self.index = faiss.IndexFlatL2(dimension)
-        self.index.add(embeddings)
+        self.index.add(embeddings_array)
         
         # Mapear índices para produtos
         self.product_mapping = {i: product for i, product in enumerate(products)}
@@ -87,7 +141,7 @@ class ProductSimilarityEngine:
         console.print(f"[bold green]✓ Índice construído com sucesso![/bold green]")
         console.print(f"[blue]Dimensão dos vetores: {dimension}[/blue]")
         console.print(f"[blue]Número total de produtos indexados: {self.index.ntotal}[/blue]")
-        
+    
     def find_similar_products(self, product_idx: int, k: int = 5) -> List[Dict[str, Any]]:
         """
         Encontra os k produtos mais similares ao produto dado.
@@ -105,14 +159,30 @@ class ProductSimilarityEngine:
         console.print(f"Categoria: {product.get('categoryName', 'N/A')}")
         console.print(f"Marca: {product.get('brandName', 'N/A')}")
         
-        # Gerar embedding para a consulta
-        query_desc = self._create_product_description(product)
-        console.print("\n[yellow]Gerando embedding para consulta...[/yellow]")
-        query_embedding = self.model.encode([query_desc])[0].reshape(1, -1).astype('float32')
+        # Gerar embeddings para o produto de consulta
+        field_embeddings = self._generate_field_embeddings(product)
+        query_embedding = self._combine_embeddings(field_embeddings)
+        
+        # Mostrar contribuição de cada campo
+        console.print("\n[bold green]Contribuição de cada campo para o embedding final:[/bold green]")
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Campo")
+        table.add_column("Peso Efetivo")
+        table.add_column("Norma do Embedding")
+        
+        for field, emb in field_embeddings.items():
+            weight = self.field_weights[field]
+            norm = np.linalg.norm(emb)
+            table.add_row(
+                field,
+                f"{weight:.3f}",
+                f"{norm:.3f}"
+            )
+        console.print(table)
         
         # Buscar produtos similares
         console.print("\n[yellow]Buscando produtos similares no índice FAISS...[/yellow]")
-        distances, indices = self.index.search(query_embedding, k + 1)
+        distances, indices = self.index.search(query_embedding.reshape(1, -1), k + 1)
         
         # Formatar resultados
         results = []
