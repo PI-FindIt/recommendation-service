@@ -294,7 +294,7 @@ class ProductSimilarityEngine:
                 VectorField("$.embedding", 
                            "FLAT", {
                                "TYPE": "FLOAT32",
-                               "DIM": 384,  # dimensão do modelo all-MiniLM-L6-v2
+                               "DIM": 768,  # dimensão do modelo all-mpnet-base-v2
                                "DISTANCE_METRIC": "L2"
                            }, as_name="embedding")
             )
@@ -366,7 +366,7 @@ class ProductSimilarityEngine:
                 # Salvar configurações e metadados
                 metadata = {
                     'timestamp': timestamp,
-                    'model_name': 'all-MiniLM-L6-v2',
+                    'model_name': 'all-mpnet-base-v2',
                     'embedding_dim': dimension,
                     'num_products': len(self.product_mapping),
                     'field_weights': self.field_weights
