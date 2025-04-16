@@ -79,9 +79,9 @@ services:
     volumes:
       - redis_data:/data
 
-networks:
-  recommendation-service:
+#networks:
+#  recommendation-service:
 volumes:
   redis_data:
-  recommendation-mongo-data:
+#     recommendation-mongo-data:
 
