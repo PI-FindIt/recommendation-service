@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 import numpy as np
 import requests
@@ -135,6 +135,144 @@ class ProductSimilarityEngine(BaseEngine):
 
         return results
 
+    def get_product_recommendations(
+        self, product_ean: str, k: int = 5, filters: Optional[Dict] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Obtém recomendações para um produto específico.
+
+        Args:
+            product_ean: EAN do produto
+            k: Número de recomendações
+            filters: Filtros opcionais (categoria, marca, etc.)
+        """
+        # Encontrar o índice do produto
+        product_idx = None
+        for idx, product in self.data_mapping.items():
+            if product["ean"] == product_ean:
+                product_idx = idx
+                break
+
+        if product_idx is None:
+            raise ValueError(f"Produto com EAN {product_ean} não encontrado!")
+
+        # Obter o produto de referência
+        product = self.data_mapping[product_idx]
+        console.print("\n[bold cyan]Buscando recomendações para:[/bold cyan]")
+        console.print(f"Nome: {product['name']}")
+        console.print(f"EAN: {product['ean']}")
+        console.print(f"Categoria: {product.get('categoryName', 'N/A')}")
+        console.print(f"Marca: {product.get('brandName', 'N/A')}")
+
+        # Buscar produtos similares
+        query_embedding = self.index.reconstruct(product_idx).reshape(1, -1)
+        distances, indices = self.index.search(query_embedding, k + 1)
+
+        # Formatar resultados
+        recommendations = []
+        for dist, idx in zip(distances[0], indices[0]):
+            if idx != product_idx:  # Não incluir o próprio produto
+                similar_product = self.data_mapping[idx]
+
+                # Aplicar filtros se existirem
+                if filters:
+                    if (
+                        "category" in filters
+                        and similar_product.get("categoryName") != filters["category"]
+                    ):
+                        continue
+                    if (
+                        "brand" in filters
+                        and similar_product.get("brandName") != filters["brand"]
+                    ):
+                        continue
+
+                recommendations.append(
+                    {
+                        "product": similar_product,
+                        "similarity_score": float(1.0 / (1.0 + dist)),
+                        "distance": float(dist),
+                    }
+                )
+
+        return recommendations[:k]
+
+    def get_recommendations_by_text(
+        self, text_query: str, k: int = 5, filters: Optional[Dict] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Obtém recomendações baseadas em uma query de texto.
+
+        Args:
+            text_query: Texto para buscar produtos similares
+            k: Número de recomendações
+            filters: Filtros opcionais
+        """
+        console.print(
+            f"\n[bold cyan]Buscando produtos similares a: {text_query}[/bold cyan]"
+        )
+
+        # Gerar embedding para a query
+        query_embedding = self.model.encode(text_query, device=self.device)
+        query_embedding = query_embedding.reshape(1, -1).astype("float32")
+
+        # Buscar produtos similares
+        distances, indices = self.index.search(query_embedding, k)
+
+        # Formatar resultados
+        recommendations = []
+        for dist, idx in zip(distances[0], indices[0]):
+            product = self.data_mapping[idx]
+
+            # Aplicar filtros
+            if filters:
+                if (
+                    "category" in filters
+                    and product.get("categoryName") != filters["category"]
+                ):
+                    continue
+                if "brand" in filters and product.get("brandName") != filters["brand"]:
+                    continue
+
+            recommendations.append(
+                {
+                    "product": product,
+                    "similarity_score": float(1.0 / (1.0 + dist)),
+                    "distance": float(dist),
+                }
+            )
+
+        return recommendations
+
+    def print_recommendations(self, recommendations: List[Dict[str, Any]]):
+        """
+        Imprime as recomendações de forma formatada.
+        """
+        if not recommendations:
+            console.print("[yellow]Nenhuma recomendação encontrada![/yellow]")
+            return
+
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Nome")
+        table.add_column("EAN")
+        table.add_column("Categoria")
+        table.add_column("Marca")
+        table.add_column("Score")
+
+        for rec in recommendations:
+            product = rec["product"]
+            score = rec["similarity_score"]
+
+            table.add_row(
+                product["name"],
+                product["ean"],
+                product.get("categoryName", "N/A"),
+                product.get("brandName", "N/A"),
+                f"{score:.3f}",
+            )
+
+        console.print(table)
+
 
 def fetch_products(limit: int = 14000) -> List[Dict[str, Any]]:
     """
@@ -201,9 +339,6 @@ def main():
 
     try:
         products = fetch_products()
-        # and then save them to disk in json format
-        # with open("products.json", "w") as f:
-        #     json.dump(products, f, indent=2)
 
         engine = ProductSimilarityEngine()
         engine.build_index(products)
