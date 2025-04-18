@@ -15,12 +15,12 @@ console = Console()
 class ProductSimilarityEngine(BaseEngine):
     def __init__(self):
         field_weights = {
-            "name": 0.35,  # Nome do produto é muito importante
-            "generic_name": 0.15,  # Nome genérico tem relevância média
-            "category": 0.20,  # Categoria é importante para similaridade
-            "brand": 0.15,  # Marca tem relevância média
-            "keywords": 0.10,  # Keywords ajudam na contextualização
-            "ingredients": 0.05,  # Ingredientes têm menor peso mas ainda são relevantes
+            "name": 0.35,
+            "generic_name": 0.15,
+            "category": 0.20,
+            "brand": 0.15,
+            "keywords": 0.10,
+            "ingredients": 0.05,
         }
         super().__init__(field_weights=field_weights, engine_name="product_engine")
         console.print("[bold blue]Inicializando ProductSimilarityEngine...[/bold blue]")
@@ -41,37 +41,31 @@ class ProductSimilarityEngine(BaseEngine):
         """
         embeddings = {}
 
-        # Nome do produto
         if product.get("name"):
             embeddings["name"] = self.model.encode(
                 product["name"], convert_to_numpy=True, device=self.device
             )
 
-        # Nome genérico
         if product.get("genericName"):
             embeddings["generic_name"] = self.model.encode(
                 product["genericName"], convert_to_numpy=True, device=self.device
             )
 
-        # Categoria
         if product.get("categoryName"):
             embeddings["category"] = self.model.encode(
                 product["categoryName"], convert_to_numpy=True, device=self.device
             )
 
-        # Marca
         if product.get("brandName"):
             embeddings["brand"] = self.model.encode(
                 product["brandName"], convert_to_numpy=True, device=self.device
             )
 
-        # Keywords
         if product.get("keywords") and len(product["keywords"]) > 0:
             embeddings["keywords"] = self.model.encode(
                 " ".join(product["keywords"]), convert_to_numpy=True, device=self.device
             )
 
-        # Ingredientes
         if product.get("ingredients"):
             embeddings["ingredients"] = self.model.encode(
                 product["ingredients"], convert_to_numpy=True, device=self.device
@@ -122,7 +116,7 @@ class ProductSimilarityEngine(BaseEngine):
 
         results = []
         for dist, idx in zip(distances[0], indices[0]):
-            if idx != product_idx:  # Não incluir o próprio produto
+            if idx != product_idx:
                 similar_product = self.data_mapping[idx]
                 similarity_score = float(1.0 / (1.0 + dist))
                 results.append(
@@ -146,7 +140,7 @@ class ProductSimilarityEngine(BaseEngine):
             k: Número de recomendações
             filters: Filtros opcionais (categoria, marca, etc.)
         """
-        # Encontrar o índice do produto
+
         product_idx = None
         for idx, product in self.data_mapping.items():
             if product["ean"] == product_ean:
@@ -156,7 +150,6 @@ class ProductSimilarityEngine(BaseEngine):
         if product_idx is None:
             raise ValueError(f"Produto com EAN {product_ean} não encontrado!")
 
-        # Obter o produto de referência
         product = self.data_mapping[product_idx]
         console.print("\n[bold cyan]Buscando recomendações para:[/bold cyan]")
         console.print(f"Nome: {product['name']}")
@@ -164,17 +157,14 @@ class ProductSimilarityEngine(BaseEngine):
         console.print(f"Categoria: {product.get('categoryName', 'N/A')}")
         console.print(f"Marca: {product.get('brandName', 'N/A')}")
 
-        # Buscar produtos similares
         query_embedding = self.index.reconstruct(product_idx).reshape(1, -1)
         distances, indices = self.index.search(query_embedding, k + 1)
 
-        # Formatar resultados
         recommendations = []
         for dist, idx in zip(distances[0], indices[0]):
-            if idx != product_idx:  # Não incluir o próprio produto
+            if idx != product_idx:
                 similar_product = self.data_mapping[idx]
 
-                # Aplicar filtros se existirem
                 if filters:
                     if (
                         "category" in filters
@@ -212,19 +202,15 @@ class ProductSimilarityEngine(BaseEngine):
             f"\n[bold cyan]Buscando produtos similares a: {text_query}[/bold cyan]"
         )
 
-        # Gerar embedding para a query
         query_embedding = self.model.encode(text_query, device=self.device)
         query_embedding = query_embedding.reshape(1, -1).astype("float32")
 
-        # Buscar produtos similares
         distances, indices = self.index.search(query_embedding, k)
 
-        # Formatar resultados
         recommendations = []
         for dist, idx in zip(distances[0], indices[0]):
             product = self.data_mapping[idx]
 
-            # Aplicar filtros
             if filters:
                 if (
                     "category" in filters
@@ -346,7 +332,7 @@ def main():
         console.print(
             "\n[bold cyan]Testando similaridade com produtos de exemplo...[/bold cyan]"
         )
-        test_indices = [0, 10, 20]  # Testar com alguns índices de exemplo
+        test_indices = [0, 10, 20]
 
         for idx in test_indices:
             console.print("\n[bold purple]=" * 10)
@@ -370,7 +356,6 @@ def main():
         engine.save_embeddings(save_format="numpy")
         engine.save_embeddings(save_format="faiss")
 
-        # load the embeddings
         engine.load_embeddings(load_format="numpy")
         console.print(
             "\n[bold green]Produtos similares encontrados usando embeddings do numpy:[/bold green]"
