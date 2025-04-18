@@ -16,6 +16,7 @@ dependencies = [
     "sentence-transformers",
     "rich>=14.0.0",
     "torch>=2.6.0",
+    "redis>=5.2.1",
 ]
 
 [dependency-groups]
