@@ -496,28 +496,4 @@ class UserRecommendationEngine(BaseEngine):
 
         return diverse_candidates
 
-    def _get_user_data(self, user_id: str) -> dict:
-        """Get user data from GraphQL API"""
-        # TODO: Implement GraphQL query to fetch user data
-        # This should return user preferences and shopping history
-        # For now, return mock data
-        return {
-            "preferences": {
-                "brandsLike": ["Brand1", "Brand2"],
-                "brandsDislike": ["Brand3"],
-                "supermarketsLike": [1, 2],
-                "supermarketsDislike": [3],
-                "budget": 100.0,
-                "maxDistance": 10.0,
-            },
-            "supermarketLists": [
-                {
-                    "products": [
-                        {
-                            "product": {"ean": "123", "categoryName": "Category1"},
-                            "supermarket": {"price": 10.0},
-                        }
-                    ]
-                }
-            ],
-        }
+
