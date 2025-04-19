@@ -6,8 +6,8 @@ from rich.panel import Panel
 from rich.prompt import Prompt, IntPrompt
 from rich.table import Table
 
+from src.models.base_engine import BaseEngine
 from src.models.product_similarity import ProductSimilarityEngine
-from src.models.recommendation_engine import RecommendationEngine
 
 console = Console()
 
@@ -27,7 +27,7 @@ def show_loading_animation(message: str):
         time.sleep(1)
 
 
-def get_sample_products(engine: RecommendationEngine, n: int = 5) -> Table:
+def get_sample_products(engine: BaseEngine, n: int = 5) -> Table:
     """Mostra uma amostra dos produtos disponíveis."""
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("EAN")
@@ -36,7 +36,7 @@ def get_sample_products(engine: RecommendationEngine, n: int = 5) -> Table:
     table.add_column("Marca")
 
     # Pegar os primeiros n produtos como exemplo
-    sample_products = list(engine.product_mapping.values())[:n]
+    sample_products = list(engine.data_mapping.values())[:n]
 
     for product in sample_products:
         table.add_row(
