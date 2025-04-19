@@ -226,14 +226,20 @@ class UserRecommendationEngine(BaseEngine):
         # Step 1: Generate candidates
         candidates = self.generate_candidates(user_id, k=min(k * 10, 100))
 
+        console.log(f"Candidates: {candidates}")
+
         # Step 2: Score candidates
         scored_candidates = self.score_candidates(user_id, candidates, context)
+
+        console.print(f"Scored candidates: {scored_candidates}")
 
         # Step 3: Re-rank based on business rules and user preferences
         user_preferences = self._get_user_preferences(user_id)
         final_recommendations = self.rerank_candidates(
             user_id, scored_candidates, user_preferences
         )
+
+        console.print(f"Final recommendations: {final_recommendations}")
 
         return final_recommendations[:k]
 
@@ -495,5 +501,3 @@ class UserRecommendationEngine(BaseEngine):
                 diverse_candidates.append(candidate)
 
         return diverse_candidates
-
-
