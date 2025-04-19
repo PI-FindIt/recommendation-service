@@ -1,6 +1,7 @@
 import numpy as np
 from rich.console import Console
 
+from src.data.data_service import DataService
 from src.models.base_engine import BaseEngine
 from src.models.product_similarity import ProductSimilarityEngine
 
@@ -21,6 +22,25 @@ class UserRecommendationEngine(BaseEngine):
         # calcular a afinidade do user com o produto
         self.product_similarity_engine = ProductSimilarityEngine()
         self.product_similarity_engine.load_embeddings(load_format="faiss")
+
+        self.data_service = DataService()
+
+    def _get_user_data(self, user_id: str) -> dict:
+        """Get user data from GraphQL API"""
+        return self.data_service.get_user_data(user_id)
+
+    def _get_user_preferences(self, user_id: str) -> dict:
+        # filter out the user data
+        user_data = self._get_user_data(user_id)
+        return user_data.get("preferences", {})
+
+    def _get_products_by_brand(self, brand: str) -> list[dict]:
+        """Get products by brand from GraphQL API"""
+        return self.data_service.get_products_by_brand(brand)
+
+    def _get_products_by_category(self, category: str) -> list[dict]:
+        """Get products by category from GraphQL API"""
+        return self.data_service.get_products_by_category(category)
 
     def _generate_field_embeddings(self, user_data: dict) -> dict[str, np.ndarray]:
         embeddings = {}
@@ -128,7 +148,9 @@ class UserRecommendationEngine(BaseEngine):
         self,
         user_id: str,
         candidates: list[dict],
-        user_context: dict | None = None,  # Pode ser util para real time things
+        user_context: (
+            dict | None
+        ) = None,  # Pode ser util para real time things like the hour of the day
     ) -> list[dict]:
         """
         Step 2: Scoring
