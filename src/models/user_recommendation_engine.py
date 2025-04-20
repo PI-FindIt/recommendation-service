@@ -19,8 +19,7 @@ class UserRecommendationEngine(BaseEngine):
         }
         super().__init__(field_weights=field_weights, engine_name="user_recommendation")
 
-        # calcular a afinidade do user com o produto
-        self.product_similarity_engine = ProductSimilarityEngine()
+        self.product_similarity_engine = ProductSimilarityEngine(print=False)
         self.product_similarity_engine.load_embeddings(load_format="faiss")
 
         self.data_service = DataService()
@@ -224,14 +223,10 @@ class UserRecommendationEngine(BaseEngine):
         Main recommendation pipeline
         """
         # Step 1: Generate candidates
-        candidates = self.generate_candidates(user_id, k=min(k * 10, 100))
-
-        console.log(f"Candidates: {candidates}")
+        candidates = self.generate_candidates(user_id, k=min(k * 10, 10000))
 
         # Step 2: Score candidates
         scored_candidates = self.score_candidates(user_id, candidates, context)
-
-        console.print(f"Scored candidates: {scored_candidates}")
 
         # Step 3: Re-rank based on business rules and user preferences
         user_preferences = self._get_user_preferences(user_id)

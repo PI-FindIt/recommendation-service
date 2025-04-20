@@ -3,6 +3,7 @@ from rich.console import Console
 
 console = Console()
 
+
 class DataService:
     def __init__(self, api_url: str = "http://localhost"):
         self.api_url = api_url
@@ -12,13 +13,14 @@ class DataService:
         """Execute a GraphQL query and return the response"""
         try:
             response = requests.post(
-                self.api_url,
-                json={"query": query, "variables": variables or {}}
+                self.api_url, json={"query": query, "variables": variables or {}}
             )
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            console.print(f"[bold red]Error executing GraphQL query: {str(e)}[/bold red]")
+            console.print(
+                f"[bold red]Error executing GraphQL query: {str(e)}[/bold red]"
+            )
             raise
 
     def get_user_data(self, user_id: str) -> dict:
@@ -63,7 +65,7 @@ class DataService:
             }
         }
         """
-        
+
         try:
             response = self._execute_query(query, {"userId": user_id})
             return response["data"]["user"]
@@ -94,21 +96,17 @@ class DataService:
             }
         }
         """
-        
-        variables = {
-            "filters": {
-                "brandName": {
-                    "value": brand_name,
-                    "op": "EQ"
-                }
-            }
-        }
-        
+
+        variables = {"filters": {"brandName": {"value": brand_name, "op": "EQ"}}}
+        if not brand_name:
+            return []
         try:
             response = self._execute_query(query, variables)
             return response["data"]["products"]
         except Exception as e:
-            console.print(f"[bold red]Error fetching products by brand: {str(e)}[/bold red]")
+            console.print(
+                f"[bold red]Error fetching products by brand: {str(e)}[/bold red]"
+            )
             return []
 
     def get_products_by_category(self, category_name: str) -> list[dict]:
@@ -134,21 +132,17 @@ class DataService:
             }
         }
         """
-        
-        variables = {
-            "filters": {
-                "categoryName": {
-                    "value": category_name,
-                    "op": "EQ"
-                }
-            }
-        }
-        
+
+        variables = {"filters": {"categoryName": {"value": category_name, "op": "EQ"}}}
+        if not category_name:
+            return []
         try:
             response = self._execute_query(query, variables)
             return response["data"]["products"]
         except Exception as e:
-            console.print(f"[bold red]Error fetching products by category: {str(e)}[/bold red]")
+            console.print(
+                f"[bold red]Error fetching products by category: {str(e)} category: {category_name}[/bold red]"
+            )
             return []
 
     def get_product_details(self, ean: str) -> dict | None:
@@ -185,12 +179,14 @@ class DataService:
             }
         }
         """
-        
+
         try:
             response = self._execute_query(query, {"ean": ean})
             return response["data"]["product"]
         except Exception as e:
-            console.print(f"[bold red]Error fetching product details: {str(e)}[/bold red]")
+            console.print(
+                f"[bold red]Error fetching product details: {str(e)}[/bold red]"
+            )
             return None
 
     def get_supermarket_details(self, supermarket_id: int) -> dict | None:
@@ -214,12 +210,14 @@ class DataService:
             }
         }
         """
-        
+
         try:
             response = self._execute_query(query, {"id": supermarket_id})
             return response["data"]["supermarket"]
         except Exception as e:
-            console.print(f"[bold red]Error fetching supermarket details: {str(e)}[/bold red]")
+            console.print(
+                f"[bold red]Error fetching supermarket details: {str(e)}[/bold red]"
+            )
             return None
 
     def get_user_shopping_history(self, user_id: str) -> list[dict]:
@@ -253,10 +251,12 @@ class DataService:
             }
         }
         """
-        
+
         try:
             response = self._execute_query(query, {"userId": user_id})
             return response["data"]["user"]["supermarketLists"]
         except Exception as e:
-            console.print(f"[bold red]Error fetching shopping history: {str(e)}[/bold red]")
+            console.print(
+                f"[bold red]Error fetching shopping history: {str(e)}[/bold red]"
+            )
             return []

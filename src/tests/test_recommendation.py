@@ -32,10 +32,10 @@ def test_recommendation_engine():
     # Initialize engine with mock data service
     # Initialize data generator with real products
     data_generator = TestDataGenerator("products2.json")
-    
+
     # Print sample data to verify
     data_generator.print_sample_data()
-    
+
     # Initialize engine with mock data service
     engine = UserRecommendationEngine()
     mock_data_service = MockDataService()
@@ -63,7 +63,7 @@ def test_recommendation_engine():
 
         # Get recommendations
         try:
-            recommendations = engine.get_recommendations(str(user_id), k=5)
+            recommendations = engine.get_recommendations(str(user_id), k=30)
 
             # Print recommendations
             console.print("\n[bold green]Top 5 Recommendations:[/bold green]")

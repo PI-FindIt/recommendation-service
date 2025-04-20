@@ -13,7 +13,7 @@ console = Console()
 
 
 class ProductSimilarityEngine(BaseEngine):
-    def __init__(self):
+    def __init__(self, print: bool = True):
         field_weights = {
             "name": 0.35,
             "generic_name": 0.15,
@@ -22,6 +22,8 @@ class ProductSimilarityEngine(BaseEngine):
             "keywords": 0.10,
             "ingredients": 0.05,
         }
+        if not print:
+            console.file = open("product_engine.log", "w")
         super().__init__(field_weights=field_weights, engine_name="product_engine")
         console.print("[bold blue]Inicializando ProductSimilarityEngine...[/bold blue]")
 
@@ -353,8 +355,8 @@ def main():
 
         engine.save_embeddings(save_format="all")
 
-        engine.save_embeddings(save_format="numpy")
-        engine.save_embeddings(save_format="faiss")
+        # engine.save_embeddings(save_format="numpy")
+        # engine.save_embeddings(save_format="faiss")
 
         engine.load_embeddings(load_format="numpy")
         console.print(
