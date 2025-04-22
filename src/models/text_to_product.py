@@ -1,3 +1,5 @@
+from typing import Any
+
 from gliner import GLiNER
 from rich.console import Console
 
@@ -32,13 +34,11 @@ class TextToProductEngine:
             "Dietary Restrictions, Health, Allergens, Lifestyle",
         ]
 
-    def predict(self, text: str) -> list[Product]:
+    def predict(self, text: str) -> list[dict[str, Any]]:
         predictions = self.model.predict_entities(text, labels=self.labels)
         return [
-            Product(
-                self.similarity_engine.get_recommendations_by_text(
-                    product.get("text"), k=1
-                )[0].get("ean")
-            )
+            self.similarity_engine.get_recommendations_by_text(
+                product.get("text"), k=1
+            )[0]
             for product in predictions
         ]
