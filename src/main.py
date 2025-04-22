@@ -45,7 +45,7 @@ class Query:
     @strawberry.field()
     async def text_to_product(self, text: str) -> list[Product]:
         return [
-            Product(ean=product.get("ean"))
+            Product(ean=product.get("product").get("ean"))
             for product in text_to_product_engine.predict(text)
         ]
 
