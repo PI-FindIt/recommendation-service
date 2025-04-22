@@ -18,6 +18,7 @@ services:
       recommendation-service_redis:
         condition: service_healthy
     volumes:
+      - /recommendation-service/.venv
       - .:/recommendation-service
     tty: true
     networks:

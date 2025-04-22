@@ -1,19 +1,16 @@
-FROM python:3.12
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
-ENV UV_VIRTUALENVS_CREATE false
-ENV UV_VIRTUALENVS_IN_PROJECT false
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
 ENV ENV development
-ENV TORCH_CUDA_VERSION="cpu"
-ENV PATH="$PATH:/root/.local/bin"
-
 
 WORKDIR /recommendation-service
 
-RUN pip install --no-cache uv uvicorn
+ENV PATH="/recommendation-service/.venv/bin:$PATH"
 
 COPY uv.lock pyproject.toml ./
-RUN uv sync --group dev
+RUN uv sync --frozen
 
 EXPOSE 8000
 CMD [ "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
