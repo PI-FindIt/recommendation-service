@@ -12,6 +12,12 @@ class User:
     id: str
 
 
+@strawberry.input
+class RecommendationFilterInput:
+    category: str | None = None
+    brand: str | None = None
+
+
 class RecommendationReason(Enum):
     PREVIOUS_PURCHASE = "PREVIOUS_PURCHASE"
     SIMILAR_USERS = "SIMILAR_USERS"

@@ -170,11 +170,13 @@ class ProductSimilarityEngine(BaseEngine):
                 if filters:
                     if (
                         "category" in filters
+                        and filters["category"] is not None
                         and similar_product.get("categoryName") != filters["category"]
                     ):
                         continue
                     if (
                         "brand" in filters
+                        and filters["brand"] is not None
                         and similar_product.get("brandName") != filters["brand"]
                     ):
                         continue
@@ -216,10 +218,15 @@ class ProductSimilarityEngine(BaseEngine):
             if filters:
                 if (
                     "category" in filters
+                    and filters["category"] is not None
                     and product.get("categoryName") != filters["category"]
                 ):
                     continue
-                if "brand" in filters and product.get("brandName") != filters["brand"]:
+                if (
+                    "brand" in filters
+                    and filters["brand"] is not None
+                    and product.get("brandName") != filters["brand"]
+                ):
                     continue
 
             recommendations.append(

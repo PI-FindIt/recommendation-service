@@ -37,7 +37,7 @@ from strawberry.extensions.tracing import OpenTelemetryExtension
 from strawberry.fastapi import GraphQLRouter
 
 from src.config import settings
-from src.api.schema import Product
+from src.api.schema import Product, RecommendationFilterInput
 
 
 @strawberry.type
@@ -47,6 +47,38 @@ class Query:
         return [
             Product(ean=product.get("product").get("ean"))
             for product in text_to_product_engine.predict(text)
+        ]
+
+    @strawberry.field()
+    async def recommendations_by_product(
+        self,
+        ean: str,
+        recommendations: int = 5,
+        filters: RecommendationFilterInput | None = None,
+    ) -> list[Product]:
+        return [
+            Product(ean=product.get("product").get("ean"))
+            for product in engine.get_product_recommendations(
+                ean,
+                k=recommendations,
+                filters=strawberry.asdict(filters) if filters else None,
+            )
+        ]
+
+    @strawberry.field()
+    async def recommendations_by_text(
+        self,
+        query: str,
+        recommendations: int = 5,
+        filters: RecommendationFilterInput | None = None,
+    ) -> list[Product]:
+        return [
+            Product(ean=product.get("product").get("ean"))
+            for product in engine.get_recommendations_by_text(
+                query,
+                k=recommendations,
+                filters=strawberry.asdict(filters) if filters else None,
+            )
         ]
 
 
