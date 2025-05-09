@@ -433,7 +433,8 @@ class UserRecommendationEngine(BaseEngine):
 
         for candidate in candidates:
             score = candidate["score"]
-            if candidate.get("product", {}).get("supermarkets"):
+            if a := candidate.get("product", {}).get("supermarkets"):
+                print("FARTO ", a)
                 supermarket_ids = [
                     s["supermarket"]["id"] for s in candidate["product"]["supermarkets"]
                 ]
