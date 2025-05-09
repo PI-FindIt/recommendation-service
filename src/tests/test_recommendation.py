@@ -107,6 +107,9 @@ def test_recommendation_engine():
             console.print(f"\nAverage recommendation score: {avg_score:.3f}")
 
         except Exception as e:
+            import traceback
+
+            traceback.print_exc()
             console.print(
                 f"[bold red]Error getting recommendations: {str(e)}[/bold red]"
             )
