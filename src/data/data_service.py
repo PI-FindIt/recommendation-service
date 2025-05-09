@@ -50,6 +50,7 @@ class DataService:
                         product {
                             ean
                             name
+                            nameEn
                             brandName
                             categoryName
                         }
@@ -82,7 +83,9 @@ class DataService:
             products(filters: $filters) {
                 ean
                 name
+                nameEn
                 genericName
+                genericNameEn
                 brandName
                 categoryName
                 nutriScore
@@ -119,6 +122,7 @@ class DataService:
                 ean
                 name
                 genericName
+                genericNameEn
                 brandName
                 categoryName
                 nutriScore
@@ -155,6 +159,7 @@ class DataService:
                 ean
                 name
                 genericName
+                genericNameEn
                 brandName
                 categoryName
                 nutriScore
@@ -235,6 +240,7 @@ class DataService:
                         product {
                             ean
                             name
+                            nameEn
                             brandName
                             categoryName
                             nutriScore

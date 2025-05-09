@@ -31,7 +31,7 @@ def test_recommendation_engine():
 
     # Initialize engine with mock data service
     # Initialize data generator with real products
-    data_generator = TestDataGenerator("products2.json")
+    data_generator = TestDataGenerator("products.json")
 
     # Print sample data to verify
     data_generator.print_sample_data()

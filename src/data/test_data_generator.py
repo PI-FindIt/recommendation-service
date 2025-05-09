@@ -9,7 +9,7 @@ console = Console()
 
 
 class TestDataGenerator:
-    def __init__(self, products_file: str = "products2.json"):
+    def __init__(self, products_file: str = "products.json"):
         # Load real products data
         try:
             with open(products_file, "r") as f:

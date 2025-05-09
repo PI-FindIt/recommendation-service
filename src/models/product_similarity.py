@@ -15,7 +15,8 @@ console = Console()
 class ProductSimilarityEngine(BaseEngine):
     def __init__(self, print: bool = True):
         field_weights = {
-            "name": 0.35,
+            "name": 0.25,
+            "name_en": 0.1,
             "generic_name": 0.15,
             "category": 0.20,
             "brand": 0.15,
@@ -46,6 +47,11 @@ class ProductSimilarityEngine(BaseEngine):
         if product.get("name"):
             embeddings["name"] = self.model.encode(
                 product["name"], convert_to_numpy=True, device=self.device
+            )
+
+        if product.get("nameEn"):
+            embeddings["name_en"] = self.model.encode(
+                product["nameEn"], convert_to_numpy=True, device=self.device
             )
 
         if product.get("genericName"):
@@ -249,6 +255,7 @@ class ProductSimilarityEngine(BaseEngine):
 
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Nome")
+        table.add_column("NomeEn")
         table.add_column("EAN")
         table.add_column("Categoria")
         table.add_column("Marca")
@@ -260,6 +267,7 @@ class ProductSimilarityEngine(BaseEngine):
 
             table.add_row(
                 product["name"],
+                product["name_en"],
                 product["ean"],
                 product.get("categoryName", "N/A"),
                 product.get("brandName", "N/A"),
@@ -303,7 +311,7 @@ def fetch_products(limit: int = 14000) -> List[Dict[str, Any]]:
             )
             try:
                 with open("products.json", "r") as f:
-                    products = json.load(f)[:limit]
+                    products = json.load(f)["data"]["products"][:limit]
             except:
                 console.print("[bold red]Erro ao carregar products.json[/bold red]")
                 raise
