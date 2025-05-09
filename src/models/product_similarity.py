@@ -92,7 +92,7 @@ class ProductSimilarityEngine(BaseEngine):
 
         console.print(f"\n[bold cyan]Buscando {k} produtos similares...[/bold cyan]")
 
-        console.print(self.data_mapping, product_idx)
+        # console.print(self.data_mapping, product_idx)
         product = self.data_mapping[product_idx]
         console.print("\n[yellow]Produto de referência:[/yellow]")
         console.print(f"Nome: {product['name']}")
@@ -337,11 +337,13 @@ def fetch_products(limit: int = 14000) -> List[Dict[str, Any]]:
 
 def main():
     import sys
+
     console.print("\n[bold purple]=" * 50)
     console.print("[bold purple]Sistema de Similaridade de Produtos")
     console.print("[bold purple]=" * 50)
     if sys.platform == "darwin":
         import torch
+
         torch.set_num_threads(1)
     try:
         products = fetch_products()
