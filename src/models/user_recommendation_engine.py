@@ -224,11 +224,11 @@ class UserRecommendationEngine(BaseEngine):
         """
         # Step 1: Generate candidates
         candidates = self.generate_candidates(user_id, k=min(k * 10, 10000))
-        print("FARTO1")
+        print("FARTO122")
 
         # Step 2: Score candidates
         scored_candidates = self.score_candidates(user_id, candidates, context)
-        print("FARTO2")
+        print("FARTO2333")
 
         # Step 3: Re-rank based on business rules and user preferences
         user_preferences = self._get_user_preferences(user_id)
