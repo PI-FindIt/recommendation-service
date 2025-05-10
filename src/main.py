@@ -3,6 +3,7 @@ import sys
 from rich.console import Console
 
 from src.api.cli import main_cli
+from src.data.data_service import DataService
 from src.models.product_similarity import ProductSimilarityEngine
 from src.models.text_to_product import TextToProductEngine
 from src.models.user_recommendation_engine import UserRecommendationEngine
@@ -17,6 +18,9 @@ with console.status("[bold blue]Starting engines...", spinner="dots"):
     engine = ProductSimilarityEngine()
     engine.load_embeddings(load_format="faiss")
     user_recommendation_engine = UserRecommendationEngine()
+    user_recommendation_engine.data_service = DataService(
+        api_url="http://192.168.1.159"
+    )
     text_to_product_engine = TextToProductEngine(engine)
 
 console.print("[green]✓ System started successfully![/green]")
