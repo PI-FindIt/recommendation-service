@@ -1,0 +1,16 @@
+{
+  "timestamp": "20250510_171703",
+  "model_name": "all-mpnet-base-v2",
+  "embedding_dim": 768,
+  "num_products": 12378,
+  "field_weights": {
+    "name": 0.2,
+    "name_en": 0.15,
+    "generic_name": 0.075,
+    "generic_name_en": 0.08,
+    "category": 0.15,
+    "brand": 0.15,
+    "keywords": 0.1,
+    "ingredients": 0.05
+  }
+}
