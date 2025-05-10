@@ -15,10 +15,11 @@ console = Console()
 class ProductSimilarityEngine(BaseEngine):
     def __init__(self, print: bool = True):
         field_weights = {
-            "name": 0.25,
-            "name_en": 0.1,
-            "generic_name": 0.15,
-            "category": 0.20,
+            "name": 0.2,
+            "name_en": 0.15,
+            "generic_name": 0.075,
+            "generic_name_en": 0.08,
+            "category": 0.15,
             "brand": 0.15,
             "keywords": 0.10,
             "ingredients": 0.05,
@@ -57,6 +58,11 @@ class ProductSimilarityEngine(BaseEngine):
         if product.get("genericName"):
             embeddings["generic_name"] = self.model.encode(
                 product["genericName"], convert_to_numpy=True, device=self.device
+            )
+
+        if product.get("genericNameEn"):
+            embeddings["generic_name_en"] = self.model.encode(
+                product["genericNameEn"], convert_to_numpy=True, device=self.device
             )
 
         if product.get("categoryName"):
