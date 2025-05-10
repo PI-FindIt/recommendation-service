@@ -1,22 +1,9 @@
 services:
-  recommendation-service_redis:
-    image: redis/redis-stack:latest
-    healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-    networks:
-      - recommendation-service
-    volumes:
-      - recommendation_redis_data:/data
 
   recommendation-service:
     build:
       dockerfile: Dockerfile
     restart: unless-stopped
-    environment:
-      REDIS_HOST: recommendation-service_redis
-    depends_on:
-      recommendation-service_redis:
-        condition: service_healthy
     volumes:
       - /recommendation-service/.venv
       - .:/recommendation-service
@@ -31,6 +18,4 @@ services:
 networks:
   recommendation-service:
 
-volumes:
-  recommendation_redis_data:
 
