@@ -3,7 +3,9 @@ PRODUCTS_QUERY = """
         products(filters: $filters) {
             ean
             name
+            nameEn
             genericName
+            genericNameEn
             brandName
             categoryName
             keywords

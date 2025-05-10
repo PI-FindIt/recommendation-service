@@ -5,6 +5,7 @@ from rich.console import Console
 from src.api.cli import main_cli
 from src.models.product_similarity import ProductSimilarityEngine
 from src.models.text_to_product import TextToProductEngine
+from src.models.user_recommendation_engine import UserRecommendationEngine
 
 # if sys.platform == "darwin":
 #     import torch
@@ -15,6 +16,7 @@ console = Console()
 with console.status("[bold blue]Starting engines...", spinner="dots"):
     engine = ProductSimilarityEngine()
     engine.load_embeddings(load_format="faiss")
+    user_recommendation_engine = UserRecommendationEngine()
     text_to_product_engine = TextToProductEngine(engine)
 
 console.print("[green]✓ System started successfully![/green]")
@@ -47,6 +49,13 @@ class Query:
         return [
             Product(ean=product.get("product").get("ean"))
             for product in text_to_product_engine.predict(text)
+        ]
+
+    @strawberry.field()
+    async def raw_list_by_user_and_ai(self, user_id: str) -> list[Product]:
+        return [
+            Product(a.get("product").get("ean"))
+            for a in user_recommendation_engine.get_recommendations(user_id, k=20)
         ]
 
     @strawberry.field()
