@@ -113,8 +113,8 @@ class UserRecommendationEngine(BaseEngine):
             for supermarket_list in user_data["supermarketLists"]:
                 if supermarket_list.get("products"):
                     for product in supermarket_list["products"]:
-                        if product.get("supermarket", {}).get("price"):
-                            prices.append(float(product["supermarket"]["price"]))
+                        if product.get("supermarketInfo", {}).get("price"):
+                            prices.append(float(product["supermarketInfo"]["price"]))
             if prices:
                 embeddings["price_affinity"] = np.array([np.mean(prices)])
 
@@ -381,7 +381,7 @@ class UserRecommendationEngine(BaseEngine):
     def _calculate_price_affinity(self, candidate: dict, user_id: str) -> float:
         """Calculate price affinity score"""
         user_data = self._get_user_data(user_id)
-        if not candidate.get("supermarkets"):
+        if not candidate.get("supermarket"):
             return 0.0
 
         # Get average price of the candidate product
@@ -399,7 +399,7 @@ class UserRecommendationEngine(BaseEngine):
                 if supermarket_list.get("products"):
                     for product in supermarket_list["products"]:
                         if product.get("supermarket", {}).get("price"):
-                            user_avg_price += float(product["supermarket"]["price"])
+                            user_avg_price += float(product["supermarketInfo"]["price"])
                             price_count += 1
 
         if price_count == 0:

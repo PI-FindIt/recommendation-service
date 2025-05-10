@@ -54,9 +54,11 @@ class DataService:
                             brandName
                             categoryName
                         }
-                        supermarket {
+                        supermarketInfo {
                             id
-                            name
+                            supermarket {
+                                name
+                            }
                             price
                         }
                         quantity
