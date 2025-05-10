@@ -223,6 +223,7 @@ class UserRecommendationEngine(BaseEngine):
         Main recommendation pipeline
         """
         # Step 1: Generate candidates
+        print("FARTO111")
         candidates = self.generate_candidates(user_id, k=min(k * 10, 10000))
         print("FARTO122")
 
