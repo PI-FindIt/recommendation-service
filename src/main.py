@@ -18,7 +18,7 @@ with console.status("[bold blue]Starting engines...", spinner="dots"):
     engine = ProductSimilarityEngine()
     engine.load_embeddings(load_format="faiss")
     user_recommendation_engine = UserRecommendationEngine()
-    user_recommendation_engine.data_service = DataService(api_url="http://192.168.1.30")
+    user_recommendation_engine.data_service = DataService(api_url="http://172.17.0.1")
 
     text_to_product_engine = TextToProductEngine(engine)
 
