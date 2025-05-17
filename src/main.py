@@ -55,10 +55,10 @@ class Query:
         ]
 
     @strawberry.field()
-    async def raw_list_by_user_and_ai(self, user_id: str) -> list[Product]:
+    async def raw_list_by_user_and_ai(self, user_id: str, k: int = 20) -> list[Product]:
         return [
             Product(ean=a.get("product").get("ean"))
-            for a in user_recommendation_engine.get_recommendations(user_id, k=20)
+            for a in user_recommendation_engine.get_recommendations(user_id, k=k)
         ]
 
     @strawberry.field()

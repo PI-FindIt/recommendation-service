@@ -156,20 +156,21 @@ class UserRecommendationEngine(BaseEngine):
         Score each candidate based on multiple factors
         """
         scored_candidates = []
+        user_data = self._get_user_data(user_id)
 
         for candidate in candidates:
             score = 0.0
 
             # Factor 1: Product similarity score
-            sim_score = self._calculate_similarity_score(candidate, user_id)
+            sim_score = self._calculate_similarity_score(candidate, user_id, user_data)
             score += self.field_weights["product_similarity"] * sim_score
 
             # Factor 2: Brand affinity score
-            brand_score = self._calculate_brand_affinity(candidate, user_id)
+            brand_score = self._calculate_brand_affinity(candidate, user_id, user_data)
             score += self.field_weights["brand_affinity"] * brand_score
 
             # Factor 3: Price affinity score
-            price_score = self._calculate_price_affinity(candidate, user_id)
+            price_score = self._calculate_price_affinity(candidate, user_id, user_data)
             score += self.field_weights["price_affinity"] * price_score
 
             scored_candidates.append(
@@ -225,7 +226,7 @@ class UserRecommendationEngine(BaseEngine):
         # Step 1: Generate candidates
         print("FARTO111")
         candidates = self.generate_candidates(user_id, k=min(k * 10, 10000))
-        print("FARTO122")
+        print("FARTO122 candidates:", len(candidates))
 
         # Step 2: Score candidates
         scored_candidates = self.score_candidates(user_id, candidates, context)
@@ -316,9 +317,10 @@ class UserRecommendationEngine(BaseEngine):
 
         return merged
 
-    def _calculate_similarity_score(self, candidate: dict, user_id: str) -> float:
+    def _calculate_similarity_score(self, candidate: dict, user_id: str, user_data = None) -> float:
         """Calculate similarity score between candidate and user's history"""
-        user_data = self._get_user_data(user_id)
+        if user_data is None:
+            user_data = self._get_user_data(user_id)
         if not user_data.get("supermarketLists"):
             return 0.0
 
@@ -361,9 +363,10 @@ class UserRecommendationEngine(BaseEngine):
             )
             return 0.0
 
-    def _calculate_brand_affinity(self, candidate: dict, user_id: str) -> float:
+    def _calculate_brand_affinity(self, candidate: dict, user_id: str, user_data = None) -> float:
         """Calculate brand affinity score"""
-        user_data = self._get_user_data(user_id)
+        if user_data is None:
+            user_data = self._get_user_data(user_id)
         if not candidate.get("brandName"):
             return 0.0
 
@@ -378,9 +381,10 @@ class UserRecommendationEngine(BaseEngine):
 
         return score
 
-    def _calculate_price_affinity(self, candidate: dict, user_id: str) -> float:
+    def _calculate_price_affinity(self, candidate: dict, user_id: str, user_data = None) -> float:
         """Calculate price affinity score"""
-        user_data = self._get_user_data(user_id)
+        if user_data is None:
+            user_data = self._get_user_data(user_id)
         if not candidate.get("supermarket"):
             return 0.0
 
