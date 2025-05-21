@@ -1,13 +1,4 @@
 services:
-  recommendation-service_redis:
-    image: redis/redis-stack:latest
-    healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-    networks:
-      - recommendation-service
-    volumes:
-      - recommendation_redis_data:/data
-
   recommendation-service:
     build:
       dockerfile: Dockerfile.prod
@@ -24,9 +15,8 @@ services:
       - recommendation-service
       - backend
       - analytics
+    env_file:
+      - .env
 
 networks:
   recommendation-service:
-
-volumes:
-  recommendation_redis_data:

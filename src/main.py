@@ -1,7 +1,10 @@
+import os
 import sys
 
+from huggingface_hub import login
 from rich.console import Console
 
+from src.config import settings
 from src.api.cli import main_cli
 from src.data.data_service import DataService
 from src.models.product_similarity import ProductSimilarityEngine
@@ -14,7 +17,15 @@ from src.models.user_recommendation_engine import UserRecommendationEngine
 
 console = Console()
 
+token = settings.HUGGINGFACE_APIKEY
+if token is None:
+    console.print(
+        "[bold red]Hugging Face token not found. Please set the HUGGINGFACE_APIKEY environment variable.[/bold red]"
+    )
+    sys.exit(1)
+
 with console.status("[bold blue]Starting engines...", spinner="dots"):
+    login(token)
     engine = ProductSimilarityEngine()
     engine.load_embeddings(load_format="faiss")
     user_recommendation_engine = UserRecommendationEngine()

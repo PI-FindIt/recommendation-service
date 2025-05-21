@@ -1,5 +1,4 @@
 services:
-
   recommendation-service:
     build:
       dockerfile: Dockerfile
@@ -12,6 +11,8 @@ services:
       - recommendation-service
       - backend
       - analytics
+    env_file:
+      - .env
     labels:
       - "traefik.http.routers.recommendation-service.rule=HostRegexp(`api\\..+`) && PathPrefix(`/recommendation`)"
 
