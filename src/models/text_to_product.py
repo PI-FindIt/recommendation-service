@@ -13,7 +13,9 @@ class TextToProductEngine:
     def __init__(self, similarity_engine: ProductSimilarityEngine) -> None:
         self.model_name = "empathyai/gliner_large-v2.5-groceries"
         self.model = GLiNER.from_pretrained(
-            self.model_name, force_download=False, cache_dir="models_cache"
+            self.model_name,
+            force_download=False,
+            cache_dir="models_cache",
         )
         self.data_service = DataService()
         self.similarity_engine = similarity_engine

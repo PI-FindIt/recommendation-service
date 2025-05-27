@@ -23,7 +23,7 @@ class BaseEngine(ABC):
     ) -> None:
         self.engine_name = engine_name
         self.model_name = model_name
-        self.model = SentenceTransformer(model_name)
+        self.model = SentenceTransformer(model_name, cache_folder="models_cache")
         self.device = torch.device("cpu")
         if torch.backends.mps.is_available():
             self.device = torch.device("mps")
